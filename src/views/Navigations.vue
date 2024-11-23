@@ -4,14 +4,14 @@
             <div class="cont-cmd">
                 <v-text-field
                     v-model="command"
+                    flat
                     prefix="$"
                     color="white"
                     theme="dark"
                     base-color="white"
                     bg-color="#333"
-                    prepend-inner-icon="mdi-console"
                     variant="solo"
-                    label="Entrez une commande (cd, ls, mkdir, touch)"
+                    label="Entrez une commande (cd, ls, mkdir, touch, help...)"
                     @keyup.enter="executeCommand"
                     placeholder="Par exemple : cd documents"
                 ></v-text-field>
@@ -37,14 +37,13 @@
         </div>
 
         <div style="margin-top: 20px;">
-            <v-text-field
+            <!-- <v-text-field
                 v-model="command"
-                prepend-icon="mdi-console"
                 variant="outlined"
                 label="Entrez une commande (cd, ls, mkdir, touch)"
                 @keyup.enter="executeCommand"
                 placeholder="Par exemple : cd documents"
-            ></v-text-field>
+            ></v-text-field> -->
 
             <!-- <div style="margin-top: 10px;">
                 <strong>Sortie :</strong>
@@ -53,21 +52,40 @@
 
             <div id="output_animate" ref="output_animate"></div>
 
-            <div style="margin-top: 20px;">
+            <div 
+                id="history-cmd"
+            >
                 <!-- <v-chip-group
                     v-if="commandHistory.length"
                     column
                     label="Historique des commandes"
                 > -->
-                    <v-chip 
-                        v-for="(cmd, index) in commandHistory" 
-                        :key="index"
-                        :color="cmd.valid ? 'green' : 'red'"
-                        :prepend-icon="cmd.valid ? 'mdi-check-circle' : 'mdi-close-circle'"
-                        :class="cmd.valid ? 'green' : 'red'"
+                    <div 
+                        v-if="commandHistory.length==0"
+                        style="text-align: center;"
                     >
-                        {{ cmd.command }}
-                    </v-chip>
+                        <v-chip 
+                            color="white"
+                            prepend-icon="mdi-information-slab-circle-outline"
+                            class="box-show"
+                        >
+                            Historique des commandes
+                        </v-chip>
+                    </div>
+
+                    <div
+                        v-else
+                    >
+                        <v-chip 
+                            v-for="(cmd, index) in commandHistory" 
+                            :key="index"
+                            :color="cmd.state == 'valid' ? 'green-accent-2' : (cmd.state == 'error' ? 'red-lighten-1' : 'amber-accent-4')"
+                            :prepend-icon="cmd.state == 'valid' ? 'mdi-check-circle' : (cmd.state == 'error' ? 'mdi-close-circle' : 'mdi-alert-circle')"
+                            class="box-show"
+                        >
+                            {{ cmd.command }}
+                        </v-chip>
+                    </div>
                 <!-- </v-chip-group> -->
             </div>
         </div>
@@ -81,6 +99,39 @@
   
   export default {
     name: 'FolderTree',
+    computed: {
+        folderTreeNoHidden(){
+            console.log("BEGIN", this.folderTreeData);
+            let foldersNoHidden = this.folderTreeData;
+
+            const _vue = this;
+            function filterChild(children){
+                children = children.filter((child) => (
+                        (!_vue.ls.showHidden 
+                        && !child?.hidden 
+                        && child.name[0] != '.'))
+                    )
+
+                children.forEach(child => {
+                    if(child?.children && child.children.length != 0)
+                        child.children = filterChild(child.children)
+                });
+                return children;
+            }
+
+            if(!this.ls.showHidden){
+                foldersNoHidden.children = filterChild(this.folderTreeData.children)
+            }
+            else{
+                this.ls.showHidden = false;
+                this.ls.dirName = ""
+            }
+
+            console.log("END", this.folderTreeData);
+
+            return foldersNoHidden;
+        },
+    },
     data() {
         return {
             root: null,
@@ -90,6 +141,10 @@
             currentNode: null, // Le dossier courant
             folderTreeData: JSON.parse(JSON.stringify(folderTree)), // Copie locale de folderTree
             commandHistory: [], // Historique des commandes
+            ls: {
+                showHidden: false,
+                dirName: ""
+            }
         };
     },
     mounted() {
@@ -101,6 +156,7 @@
             const width = 500;
             const height = 150;
             let i = 0;
+            const decalageX = 10;
 
             d3.select(this.$refs.output_animate).select("svg").remove()
             const svg = d3
@@ -115,7 +171,7 @@
                         .attr('transform', (d) => `translate(${width/2},${0})`)
 
             g.append('text')
-                .text("COMMAND : CHANGE DIRECTORY")
+                .text("COMMANDE [cd] : CHANGE DIRECTORY")
                 .attr('dy', '.35em')
                 // .attr('x', width/2)
                 .attr("text-anchor", "middle") // Centre horizontalement
@@ -126,7 +182,7 @@
 
 
             g = svg.append("g")
-                        .attr('transform', (d) => `translate(${10},${height/2})`)
+                        .attr('transform', (d) => `translate(${decalageX},${height/2})`)
 
             g.append("foreignObject")
                 .attr('width', 50)
@@ -142,7 +198,7 @@
             const arrows = Array.from({ length: numArrows }, (_, i) => {
                 return svg.append("foreignObject")
                     .attr("x", 60)
-                    .attr("y", (height/2)-10)
+                    .attr("y", (height/2)-decalageX)
                     .attr("width", 50)
                     .attr("height", 50)
                     .attr("opacity", 1)
@@ -156,8 +212,8 @@
                     .attr("opacity", 1)
                         .transition()
                         .duration(duration)
-                        .ease(d3.easeLinear)
-                        .attr("x", width-10-50)
+                        // .ease(d3.easeLinear)
+                        .attr("x", width-decalageX-50)
                         .attr("opacity", 0)
                             .on("end", () => {
                                 animateArrow(arrow, index);
@@ -168,7 +224,7 @@
             arrows.forEach((arrow, index) =>  setTimeout(() => animateArrow(arrow, index), index * 300));
 
             g = svg.append("g")
-                .attr('transform', (d) => `translate(${width-10}, ${height/2})`)
+                .attr('transform', (d) => `translate(${width-decalageX}, ${height/2})`)
             
             g.append("foreignObject")
                 .attr('width', 50)
@@ -193,12 +249,11 @@
                 .style('overflow', 'visible');
                 
     
-            const root = d3.hierarchy(this.folderTreeData);
+            const root = d3.hierarchy(this.folderTreeNoHidden);
             this.root = root;
             root.x0 = height / 2;
             root.y0 = 0;
     
-            console.log("root", root);
             if (!this.currentNode) {
                 this.currentNode = root; // Initialement, le dossier courant est la racine
                 setTimeout(function(){
@@ -346,7 +401,6 @@
                     .duration(750)
                     .attr('fill', (d) => {
                         if (d.id == this.currentNode?.id) {
-                            console.log('Node updated to current:', d.data.name);
                             return 'orange';
                         }
                         return d._children ? 'lightsteelblue' : '#fff';
@@ -433,20 +487,23 @@
             const args = this.command.trim().split(' ');
             const cmd = args[0];
             const param = args.slice(1);
-            let valid = true;
+            let state = 'valid';
     
             switch (cmd) {
+                case 'pwd':
+                    this.pathWayDirectory();
+                    break;
                 case 'echo':
                     this.echo(param);
                     break;
                 case 'cd':
-                    this.changeDirectory(param);
+                    state = this.changeDirectory(param);
                     break;
                 case 'ls':
-                    this.listDirectory();
+                    this.listDirectory(param);
                     break;
                 case 'mkdir':
-                    this.makeDirectory(param);
+                    state = this.makeDirectory(param);
                     break;
                 case 'touch':
                     this.createFile(param);
@@ -454,15 +511,19 @@
                 case 'rm':
                     this.removeItem(param);
                     break;
+                case '':
+                    this.output = ""
+                    state = 'warning';
+                    break;
                 default:
                     this.output = `Commande inconnue : ${cmd}`;
-                    valid = false;
+                    state = 'error';
             }
     
             this.commandHistory.push({ 
                     command: this.command, 
-                    valid, 
-                    output: valid ? this.output : `<span style="color: #fe4444">${this.output}<span/>`
+                    state, 
+                    output: state != 'error' ? this.output : `<span style="color: #fe4444">${this.output}<span/>`
                 });
             
             setTimeout(()=>{
@@ -474,83 +535,110 @@
         echo(params){
             this.output = params.join(" ")
         },
+        pathWayDirectory(){
+            this.output = this.getPath(this.currentNode).replace("root", "");
+            if(this.output=="")
+                this.output="/"
+        },
         changeDirectory(params) {
-                let _dirName = ""
-                if(typeof params == "object")//params
-                    _dirName = params[0];
-                else//path
-                    _dirName = params;
+            let _dirName = ""
+            if(typeof params == "object")//params
+                _dirName = params[0];
+            else//path
+                _dirName = params;
+            
+            if(!_dirName){
+                this.currentNode = this.root;
+                this.changeDirectory("home/user")
+                this.output = `Deplacement vers le dossier personnel (par default) : ${this.currentNode.data.name}`;
+                this.updateTree(this.currentNode); 
+                return;
+            }
+            else if(_dirName=='/'){
+                this.currentNode = this.root;
+            }
+            else {
+                if(_dirName[0]=='/'){
+                    this.currentNode = this.root;
+                }
+                const _dirNames = _dirName.split("/")
                 
-                if(!_dirName){
-                    this.currentNode = this.root;
-                    this.changeDirectory("home/user")
-                    this.output = `Deplacement vers le dossier personnel (par default) : ${this.currentNode.data.name}`;
-                    this.updateTree(this.currentNode); 
-                    return;
-                }
-                else if(_dirName=='/'){
-                    this.currentNode = this.root;
-                }
-                else {
-                    if(_dirName[0]=='/'){
-                        this.currentNode = this.root;
-                    }
-                    const _dirNames = _dirName.split("/")
-                    
-                    for (let index = 0; index < _dirNames.length; index++) {
-                        const dirName = _dirNames[index];
-                        if(dirName != ""){
-                            if (dirName === '..' && this.currentNode) {
-                                if (this.currentNode.parent.children) {
-                                    this.currentNode.parent.children.forEach((child) => {
-                                        if (child.children) {
-                                            child._children = child.children;
-                                            child.children = null;
-                                        }
-                                    });
-                                    this.currentNode.parent._children = this.currentNode.parent.children;
-                                    this.currentNode.parent.children = null;
+                for (let index = 0; index < _dirNames.length; index++) {
+                    const dirName = _dirNames[index];
+                    if(dirName != ""){
+                        if (dirName === '..' && this.currentNode) {
+                            if (this.currentNode.parent.children) {
+                                this.currentNode.parent.children.forEach((child) => {
+                                    if (child.children) {
+                                        child._children = child.children;
+                                        child.children = null;
+                                    }
+                                });
+                                this.currentNode.parent._children = this.currentNode.parent.children;
+                                this.currentNode.parent.children = null;
+                            }
+                            this.currentNode = this.currentNode.parent;
+                        } 
+                        else {
+                            const found = this.currentNode.children?.find((d) => d.data.name === dirName && d.data.type == "d") || this.currentNode._children?.find((d) => d.data.name === dirName &&  d.data.type == "d");
+                            
+                            if (found) {
+                                if (this.currentNode._children && !this.currentNode.children) {
+                                    this.currentNode.children = this.currentNode._children;
+                                    this.currentNode._children = null;
                                 }
-                                this.currentNode = this.currentNode.parent;
+                                found.children?.forEach((child) => {
+                                    if (child.children) {
+                                        child._children = child.children;
+                                        child.children = null;
+                                    }
+                                });
+                                this.currentNode = found;
                             } 
                             else {
-                                const found = this.currentNode.children?.find((d) => d.data.name === dirName && d.data.type == "d") || this.currentNode._children?.find((d) => d.data.name === dirName &&  d.data.type == "d");
-                                
-                                if (found) {
-                                    if (this.currentNode._children && !this.currentNode.children) {
-                                        this.currentNode.children = this.currentNode._children;
-                                        this.currentNode._children = null;
-                                    }
-                                    found.children?.forEach((child) => {
-                                        if (child.children) {
-                                            child._children = child.children;
-                                            child.children = null;
-                                        }
-                                    });
-                                    this.currentNode = found;
-                                } 
-                                else {
-                                    this.output = `Dossier non trouvé : ${dirName}`;
-                                    return;
-                                }
+                                this.output = `Dossier non trouvé : ${dirName}`;
+                                return 'warning';
                             }
                         }
                     }
                 }
+            }
 
-                this.output = `Dossier actuel : ${this.currentNode.data.name}`;
-                console.log('Current directory changed to:', this.currentNode.data.name);
-                this.updateTree(this.currentNode); 
+            this.output = `Dossier actuel : ${this.currentNode.data.name}`;
+            this.updateTree(this.currentNode); 
+            return 'valid'
         },
-        listDirectory() {
+        listDirectory(params) {
+            console.log(this.folderTreeData, this.currentNode);
             const children = this.currentNode.children || this.currentNode._children || [];
-            
+
             if (this.currentNode._children) {
                 this.currentNode.children = this.currentNode._children;
                 this.currentNode._children = null;
             }
 
-            this.output = children.map((child) => child.data.name).join('\n');
+            if(params.some((p) => /-[^ ]*a[^ ]*/.test(p))){
+                this.ls.showHidden = true;
+            }
+
+            if( params.some((p) => /-[^ ]*l[^ ]*/.test(p)) ){        
+                this.output = children.filter((child) => !child.data?.hidden || params.some((p) => /-[^ ]*a[^ ]*/.test(p))).map((child) => {
+                    return `${child.data.rights}  ${child.data.user}  ${child.data.group}  ${child.data.date}  ${child.data.name}`.replaceAll(" ", "&nbsp;")
+                }).join('\n');
+            }
+            else if(params.includes("-a")){
+                this.output = children.filter((child) => !child.data?.hidden || params.includes("-a")).map((child) => {
+                    return child.data.name
+                }).join('\n');
+            }
+            else if( params.length == 0 ){
+                this.output = children.filter((child) => !child.data.hidden).map((child) => child.data.name).join('\n');
+            }
+            
+            
+            
+            
+
             this.updateTree(this.currentNode);
         },
         makeDirectory(params) {
@@ -565,6 +653,7 @@
             else
                 dirNames = [params]
 
+            let state = "valid"
             for (let index = 0; index < dirNames.length; index++) {
                 const dirName = dirNames[index];
                 
@@ -576,8 +665,30 @@
                     }
 
                     if( targetNode.data.children.every(item => item.name !== dirName) ){
-                        targetNode.children.push({ name: dirName, children: [], type: "d" });
-                        targetNode.data.children.push({ name: dirName, children: [], type: "d" });
+                        const now = new Date();
+
+                        const month = String(now.getMonth() + 1).padStart(2, '0');
+                        const day = String(now.getDate()).padStart(2, '0');
+
+                        const hours = String(now.getHours()).padStart(2, '0');
+                        const minutes = String(now.getMinutes()).padStart(2, '0');
+
+                        const formattedDate = `${String(now.getFullYear()).slice(2).padStart(2, '0')}-${month}-${day} ${hours}:${minutes}`;
+
+                        const rep = {
+                            name: dirName,
+                            type: "d",
+                            rights: "drwxr-xr-x",
+                            user: "user",
+                            group: "user",
+                            hidden: dirName[0] == '.' ? true : false,
+                            date: formattedDate,
+                            children: [], 
+                        }
+
+                        targetNode.children.push(rep);
+                        targetNode.data.children.push(rep);
+
                         added = true;
                     }
                 }
@@ -586,16 +697,18 @@
                     this.folderTreeData = this.root.data;
 
                     let pwd = this.getPath(targetNode)
-                    console.log("pwdddd", pwd);
-                    this.pwd = pwd.replace("/root", "")
+                    this.pwd = pwd.replace("root", "")
 
                     this.createTree();
                     this.output = `Dossier créé : ${dirName}`;
                 }
                 else{
                     this.output = `Erreur lors de la création du dossier : ${dirName}`;
+                    state = 'warning'
                 }
             }
+
+            return state
         },
         createFile(params) {
             if (!params) {
@@ -616,14 +729,36 @@
                     if (!targetNode.children) {
                         targetNode.children = [];
                     }
-                    targetNode.children.push({ name: fileName, children: null });
-                    targetNode.data.children.push({ name: fileName, children: null });
+
+                    const now = new Date();
+
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const day = String(now.getDate()).padStart(2, '0');
+
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+
+                    const formattedDate = `${String(now.getFullYear()).slice(2).padStart(2, '0')}-${month}-${day} ${hours}:${minutes}`;
+
+                    const file = {
+                        name: fileName, 
+                        type: "f",
+                        rights: "-rwxr-xr-x",
+                        user: "user",
+                        group: "user",
+                        hidden: fileName[0] == '.' ? true : false,
+                        date: formattedDate,
+                        children: null,
+                    }
+
+                    targetNode.children.push(file);
+                    targetNode.data.children.push(file);
                 }
                 this.folderTreeData = this.root.data
             }
 
             let pwd = this.getPath(targetNode)
-            this.pwd = pwd.replace("/root", "")
+            this.pwd = pwd.replace("root", "")
             
             this.createTree();
             this.output = `Fichier créé : ${filesNames}`;
@@ -665,7 +800,7 @@
         },
         getPath(node) {
             if (node.parent) {
-                return `/${this.getPath(node.parent)}/${node.data.name}`;
+                return `${this.getPath(node.parent)}/${node.data.name}`;
             }
             return node.data.name;
         },
@@ -687,8 +822,10 @@
                 height: 50vh;
                 position: relative;
                 overflow: hidden;
+                box-shadow: 1px 1px 5px #333;
                 .v-text-field {
-                    width: 100%;
+                    margin: auto;
+                    width: 97%;
                     position: absolute;
                     top: 0;
                     z-index: 1;
@@ -704,6 +841,7 @@
                     padding-bottom: 10px;
                     margin-top: -30px;
                     .v-list-item-subtitle {
+                        font-family: 'Roboto Mono', monospace;
                         display: table-caption;
                         width: 100%;
                     }
@@ -736,6 +874,14 @@
         }
     }
 
+    #history-cmd {
+        margin-top: 20px; 
+        background: #333; 
+        border-radius: 10px; 
+        padding: 10px; 
+        box-shadow: 1px 1px 5px #333;
+    }
+
     .mdi-icon-folder {
         color: #535050;
     }
@@ -751,6 +897,27 @@
 
     .fadein {
         animation: fadeInOut 1s ease-in-out infinite;
+    }
+
+    .box-show {
+        animation: scaleBounce 0.7s ease-in-out;
+    }
+
+    @keyframes scaleBounce {
+        0% {
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+        70% {
+            transform: scale(0.9);
+        }
+        100% {
+            transform: scale(1);
+        }
     }
 </style>
 

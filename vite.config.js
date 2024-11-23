@@ -5,6 +5,12 @@ import vue from '@vitejs/plugin-vue'
 
 // https://vite.dev/config/
 export default defineConfig({
+  chainWebpack: config => {
+    config.plugin('html').tap(args => {
+      args[0].title = 'CTRL+Freak';
+      return args;
+    });
+  },
   plugins: [
     vue(),
   ],

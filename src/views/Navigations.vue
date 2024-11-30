@@ -12,7 +12,8 @@
                     bg-color="#333"
                     variant="solo"
                     label="Entrez une commande (cd, ls, mkdir, touch, help...)"
-                    @keyup.enter="executeCommand"
+                    @keyup.enter="executeCommand()"
+                    @keyup="naveTerminal($event)"
                     placeholder="Par exemple : cd documents"
                 ></v-text-field>
 
@@ -25,10 +26,19 @@
                     <v-list-item
                         v-for="(cmd, index) in commandHistory" 
                         :key="index"
-                        
                     >
-                        <v-list-item-title v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')}`"></v-list-item-title>
-                        <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
+                        <div v-if="commandHistory.length-(cursorHistory) != index">
+                            <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} `"></v-list-item-title>
+
+                            <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
+                        </div>
+
+                        <div v-else>
+                            <!-- <i class="mdi-close-circle mdi v-icon notranslate v-theme--light v-icon--size-default v-icon--start" aria-hidden="true"></i>  -->
+                            <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} <i class='mdi-map-marker mdi in-terminal-i v-icon' aria-hidden='true'></i>`"></v-list-item-title>
+
+                            <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
+                        </div>
                     </v-list-item>
                 </v-list>
             </div>
@@ -37,18 +47,70 @@
         </div>
 
         <div style="margin-top: 20px;">
-            <!-- <v-text-field
-                v-model="command"
-                variant="outlined"
-                label="Entrez une commande (cd, ls, mkdir, touch)"
-                @keyup.enter="executeCommand"
-                placeholder="Par exemple : cd documents"
-            ></v-text-field> -->
+            <v-breadcrumbs 
+                v-if="pwd.split('/').slice(1).length > 0"
+            >
+                <div 
+                    v-for="(dir, k) in pwd.split('/').slice(1)"
+                    :key="k"
+                >
+                    <v-breadcrumbs-divider
+                        v-if="k==0"
+                        class="bounce"
+                    >
+                        <v-icon 
+                            icon="mdi-circle-medium"
+                            style="opacity: 0.5;"
+                        ></v-icon>
+                    </v-breadcrumbs-divider>
 
-            <!-- <div style="margin-top: 10px;">
-                <strong>Sortie :</strong>
-                <div v-html="output"></div>
-            </div> -->
+                    <v-breadcrumbs-item
+                        class="bounce"
+                    >
+                        {{ dir }}
+                    </v-breadcrumbs-item>
+
+                    <v-breadcrumbs-divider
+                        v-if="k!=pwd.split('/').slice(1).length-1"
+                        class="bounce"
+                    >
+                        <v-icon icon="mdi-chevron-right"></v-icon>
+                    </v-breadcrumbs-divider>
+
+                    <v-breadcrumbs-divider
+                        v-else
+                        class="bounce"
+                    >
+                        <v-icon icon="mdi-map-marker"></v-icon>
+                    </v-breadcrumbs-divider>
+                    <!-- mdi-map-marker -->
+                </div>
+            </v-breadcrumbs>
+
+            <div
+                v-else
+                style="padding: 7px 19px;"
+            >
+                <v-tooltip 
+                    max-width="250"
+                    text="Entrez la comande 'pwd' afin de savoir si vous n'êtes pas perdue."
+                >
+                    <template v-slot:activator="{ props }">
+                        <v-btn 
+                            v-bind="props"
+                            icon
+                            variant="plain"
+                            class="bounce"
+                            @click="command='pwd'"
+                        >
+                            <v-icon 
+                                icon="mdi-map-marker-question"
+                            >
+                            </v-icon>
+                        </v-btn>
+                    </template>
+                </v-tooltip>
+            </div>
 
             <div id="output_animate" ref="output_animate"></div>
 
@@ -67,7 +129,7 @@
                         <v-chip 
                             color="white"
                             prepend-icon="mdi-information-slab-circle-outline"
-                            class="box-show"
+                            class="bounce"
                         >
                             Historique des commandes
                         </v-chip>
@@ -81,7 +143,9 @@
                             :key="index"
                             :color="cmd.state == 'valid' ? 'green-accent-2' : (cmd.state == 'error' ? 'red-lighten-1' : 'amber-accent-4')"
                             :prepend-icon="cmd.state == 'valid' ? 'mdi-check-circle' : (cmd.state == 'error' ? 'mdi-close-circle' : 'mdi-alert-circle')"
-                            class="box-show"
+                            :append-icon="commandHistory.length-(cursorHistory) == index ? 'mdi-map-marker' : ''"
+                            class="bounce"
+                            @click="command = cmd.command"
                         >
                             {{ cmd.command }}
                         </v-chip>
@@ -101,8 +165,8 @@
     name: 'FolderTree',
     computed: {
         folderTreeNoHidden(){
-            console.log("BEGIN", this.folderTreeData);
-            let foldersNoHidden = this.folderTreeData;
+            console.log("BEGIN", JSON.parse(JSON.stringify(this.folderTreeData)));
+            let foldersNoHidden = JSON.parse(JSON.stringify((this.folderTreeData)));
 
             const _vue = this;
             function filterChild(children){
@@ -120,7 +184,7 @@
             }
 
             if(!this.ls.showHidden){
-                foldersNoHidden.children = filterChild(this.folderTreeData.children)
+                foldersNoHidden.children = filterChild(foldersNoHidden.children)
             }
             else{
                 this.ls.showHidden = false;
@@ -141,6 +205,7 @@
             currentNode: null, // Le dossier courant
             folderTreeData: JSON.parse(JSON.stringify(folderTree)), // Copie locale de folderTree
             commandHistory: [], // Historique des commandes
+            cursorHistory: 0,
             ls: {
                 showHidden: false,
                 dirName: ""
@@ -249,7 +314,7 @@
                 .style('overflow', 'visible');
                 
     
-            const root = d3.hierarchy(this.folderTreeNoHidden);
+            let root = d3.hierarchy(this.folderTreeNoHidden);
             this.root = root;
             root.x0 = height / 2;
             root.y0 = 0;
@@ -268,10 +333,15 @@
             }
 
             const update = (source) => {
+                if(source.id == this.root.id)
+                    i = 0;
+                
+                // console.log("source", source, this.root);
                 const treeLayout = d3.tree().size([height, width - 120]);
-                treeLayout(root);
+                treeLayout(this.root);
+
     
-                const nodes = root.descendants();
+                const nodes = this.root.descendants();
                 const node = svg.selectAll('g.node').data(nodes, (d) => d.id || (d.id = ++i));
                 
                 const _vue = this;
@@ -299,7 +369,8 @@
                         if (d.children) {
                             d._children = d.children;
                             d.children = null;
-                        } else {
+                        } 
+                        else {
                             d.children = d._children;
                             d._children = null;
                         }
@@ -411,7 +482,7 @@
                
 
                 // Liens entre les nœuds
-                const links = root.links();
+                const links = this.root.links();
                 const link = svg.selectAll('path.link').data(links, (d) => d.target.id);
     
                 // Supprimer les anciens liens
@@ -457,17 +528,18 @@
                   ${d.y} ${d.x}
             `;
     
-            root.descendants().forEach((d) => {
+            this.root.descendants().forEach((d) => {
                 if (d.depth > 0) {
                     d._children = d.children;
                     d.children = null;
                 }
             });
     
-            update(root);
+            update(this.root);
             this.updateTree = update; // Stocker la fonction `update` pour les mises à jour futures
         },
         findNodeInTree(node, nodeName, depth) {
+            // console.log("node", node, nodeName, depth, node?.data?.name, node?.depth);
             if (node?.data?.name == nodeName && (node.depth == depth || depth == undefined) ) {
                 return node;
             }
@@ -480,16 +552,77 @@
                     }
                 }
             }
+            else if(node._children){
+                for (let child of node._children) {
+                    const found = this.findNodeInTree(child, nodeName, depth);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
 
             return null;
         },
+        updateNode(node_parent, nodeName, depth, node_update) {
+            if ( node_parent?.data?.name == nodeName && (node_parent.depth == depth || depth == undefined) ) {
+                return;
+            }
+
+            if (node_parent.children) {
+                
+                for (let child of node_parent.children) {
+                    if (child.name == nodeName) {
+                        Object.assign(child, node_update);
+                        return;
+                    }
+                    this.updateNode(child, nodeName, depth, node_update);
+                }
+            }
+            else if (node_parent._children) {
+                for (let child of node_parent._children) {
+                    if (child.name == nodeName) {
+                        Object.assign(child, node_update);
+                        return;
+                    }
+                    this.updateNode(child, nodeName, depth, node_update);
+                }
+            }
+
+            return null;
+        },
+        naveTerminal(event){
+            switch (event.key) {
+                case "ArrowUp":
+                    if(this.cursorHistory < this.commandHistory.length){
+                        this.cursorHistory += 1
+                        this.command = this.commandHistory.slice().reverse()[this.cursorHistory-1].command
+                    }
+                    break;
+                case "ArrowDown":
+                    if(this.cursorHistory - 1 >= 0){
+                        this.cursorHistory -= 1
+                        if(this.cursorHistory == 0){
+                            this.command = "";
+                            break
+                        }
+                        this.command = this.commandHistory.slice().reverse()[this.cursorHistory-1].command
+                    }
+                    break;
+                default:
+                    break;
+            }
+        },
         executeCommand() {
+            this.cursorHistory = 0;
             const args = this.command.trim().split(' ');
             const cmd = args[0];
             const param = args.slice(1);
             let state = 'valid';
     
             switch (cmd) {
+                case 'chmod':
+                    state = this.chmodItem(param[1], param[0]);
+                    break
                 case 'pwd':
                     this.pathWayDirectory();
                     break;
@@ -537,6 +670,7 @@
         },
         pathWayDirectory(){
             this.output = this.getPath(this.currentNode).replace("root", "");
+            this.pwd = this.output;
             if(this.output=="")
                 this.output="/"
         },
@@ -552,7 +686,7 @@
                 this.changeDirectory("home/user")
                 this.output = `Deplacement vers le dossier personnel (par default) : ${this.currentNode.data.name}`;
                 this.updateTree(this.currentNode); 
-                return;
+                return "valid";
             }
             else if(_dirName=='/'){
                 this.currentNode = this.root;
@@ -604,41 +738,57 @@
                 }
             }
 
+            this.pwd = ""
             this.output = `Dossier actuel : ${this.currentNode.data.name}`;
             this.updateTree(this.currentNode); 
             return 'valid'
         },
         listDirectory(params) {
-            console.log(this.folderTreeData, this.currentNode);
-            const children = this.currentNode.children || this.currentNode._children || [];
+            const _vue = this;
+            function foundChild(dic, name){
+                if(dic?.data.name == name){
+                    return dic
+                }
+                else{
+                    for (let index = 0; index < dic?.children?.length; index++) {
+                        let element = dic.children[index];
 
-            if (this.currentNode._children) {
+                        if(element?.data.name == name){
+                            return element
+                        }
+                        return foundChild(element, name)
+                    }
+                }
+                return _vue.currentNode;
+            }
+
+            // console.log("folderTreeData", this.folderTreeData);
+            const currentNodeTemp = foundChild(d3.hierarchy(this.folderTreeData), this.currentNode.data.name)
+            // const children = this.currentNode.children || this.currentNode._children || [];
+            // console.log("currentNodeTemp", currentNodeTemp);
+            if ( this.currentNode._children ) {
                 this.currentNode.children = this.currentNode._children;
                 this.currentNode._children = null;
             }
 
-            if(params.some((p) => /-[^ ]*a[^ ]*/.test(p))){
+            if( params.some((p) => /-[^ ]*a[^ ]*/.test(p)) ){
                 this.ls.showHidden = true;
             }
 
             if( params.some((p) => /-[^ ]*l[^ ]*/.test(p)) ){        
-                this.output = children.filter((child) => !child.data?.hidden || params.some((p) => /-[^ ]*a[^ ]*/.test(p))).map((child) => {
-                    return `${child.data.rights}  ${child.data.user}  ${child.data.group}  ${child.data.date}  ${child.data.name}`.replaceAll(" ", "&nbsp;")
-                }).join('\n');
+                this.output = currentNodeTemp.children.filter((child) => !child.data?.hidden || params.some((p) => /-[^ ]*a[^ ]*/.test(p))).map((child) => {
+                        return `${child.data.rights}  ${child.data.user}  ${child.data.group}  ${child.data.date}  ${child.data.name}`.replaceAll(" ", "&nbsp;")
+                    }).join('\n');
             }
-            else if(params.includes("-a")){
-                this.output = children.filter((child) => !child.data?.hidden || params.includes("-a")).map((child) => {
-                    return child.data.name
-                }).join('\n');
+            else if( params.includes("-a") ){
+                this.output = currentNodeTemp.children.map((child) => {
+                        return child.data.name
+                    }).join('\n');
             }
             else if( params.length == 0 ){
-                this.output = children.filter((child) => !child.data.hidden).map((child) => child.data.name).join('\n');
+                this.output = currentNodeTemp.children.filter((child) => !child.data.hidden).map((child) => child.data.name).join('\n');
             }
             
-            
-            
-            
-
             this.updateTree(this.currentNode);
         },
         makeDirectory(params) {
@@ -694,7 +844,9 @@
                 }
 
                 if(added){
-                    this.folderTreeData = this.root.data;
+                    this.updateNode(this.currentNode, targetNode.data.name, null, targetNode)
+                    // console.log("mk", this.currentNode, this.folderTreeData);
+                    // this.folderTreeData = this.root.data;
 
                     let pwd = this.getPath(targetNode)
                     this.pwd = pwd.replace("root", "")
@@ -754,13 +906,16 @@
                     targetNode.children.push(file);
                     targetNode.data.children.push(file);
                 }
-                this.folderTreeData = this.root.data
             }
+
+            // console.log("folder", this.folderTreeData);
 
             let pwd = this.getPath(targetNode)
             this.pwd = pwd.replace("root", "")
-            
+            // this.root = d3.hierarchy(this.folderTreeNoHidden);
+            // this.currentNode = this.root;
             this.createTree();
+            // this.updateTree(this.root)
             this.output = `Fichier créé : ${filesNames}`;
         },
         removeItem(params) {
@@ -768,7 +923,6 @@
                 this.output = 'Erreur : Aucun nom spécifié';
                 return;
             }
-
 
             let children = this.currentNode.children || this.currentNode._children;
             
@@ -804,6 +958,112 @@
             }
             return node.data.name;
         },
+        chmodItem(itemName, permissions) {
+            if (!itemName || !permissions) {
+                this.output = 'Erreur : Nom d\'élément ou permissions non spécifiés';
+                return "error";
+            }
+
+            const target = this.findNodeInTree(this.currentNode, itemName);
+            if (!target) {
+                this.output = `Erreur : Élément '${itemName}' introuvable`;
+                return "warning";
+            }
+
+            // format numérique (ex: 755)
+            if (/^[0-7]{3}$/.test(permissions)) {
+                let permStr = this.convertNumericPermissions(permissions);
+
+                target.data.rights = permStr;
+                target.data.rights = target.data.type.replace("f", "-") + target.data.rights.slice(1)
+                target.rights = target.data.rights;
+
+                const name = target.data.name
+                delete target.data;
+                delete target.parent;
+                delete target.depth;
+                delete target._children;
+                delete target.height;
+
+                this.updateNode(this.folderTreeData, name, target.depth, target)
+            }
+            else if (/^[ugoa]+[+-=][rwx]+$/.test(permissions)) {// format symbolique ex: u+r, g-w
+                target.data.rights = this.applySymbolicPermissions(target.data.rights, permissions);
+
+                target.data.rights = target.data.type.replace("f", "-") + target.data.rights.slice(1)
+                target.rights = target.data.rights;
+
+                const name = target.data.name
+                delete target.data;
+                delete target.parent;
+                delete target.depth;
+                delete target._children;
+                delete target.height;
+
+                this.updateNode(this.folderTreeData, name, target.depth, target)
+            }
+            else {
+                this.output = 'Erreur : Format de permissions invalide';
+                return "error";
+            }
+
+            this.root = d3.hierarchy(this.folderTreeData)
+            
+            this.createTree();
+            this.output = `Permissions de '${itemName}' mises à jour en '${target.rights}'`;
+            return "valid"
+        },
+        convertNumericPermissions(numeric) {
+            const permissionMap = ['---', '--x', '-w-', '-wx', 'r--', 'r-x', 'rw-', 'rwx'];
+            return `d${permissionMap[numeric[0]]}${permissionMap[numeric[1]]}${permissionMap[numeric[2]]}`;
+        },
+        applySymbolicPermissions(currentRights, symbolic) {
+            let [owner, group, other] = currentRights.slice(1).match(/.{3}/g); // Obtenir les permissions
+
+            // decomposition de la commande
+            const [entities, operation, modes] = symbolic.match(/^([ugoa]+)([+-=])([rwx]+)$/).slice(1);
+
+            // appliquer la modification aux entités concernées
+            for (const entity of entities) {
+                switch (entity) {
+                    case 'u': owner = this.updateRights(owner, operation, modes); break;
+                    case 'g': group = this.updateRights(group, operation, modes); break;
+                    case 'o': other = this.updateRights(other, operation, modes); break;
+                    case 'a':
+                        owner = this.updateRights(owner, operation, modes);
+                        group = this.updateRights(group, operation, modes);
+                        other = this.updateRights(other, operation, modes);
+                        break;
+                }
+            }
+
+            return `d${owner}${group}${other}`;
+        },
+        updateRights(current, operation, modes) {
+            let updated = current;
+            
+            for (const mode of modes) {
+                let position = "rwx".indexOf(mode)
+                switch (operation) {
+                    case '+':
+                        if (!updated.includes(mode)) 
+                            updated = updated.slice(0, position) + mode + updated.slice(position + 1);
+                        break;
+                    case '-':
+                        updated = updated.replace(mode, '-');
+                        break;
+                    case '=':
+                        updated = mode;
+                        break;
+                }
+            }
+
+            // complete les caracteere
+            updated = updated.split('').sort().join('').padEnd(3, '-');
+
+            return updated;
+        }
+
     },
   };
 </script>
@@ -840,6 +1100,11 @@
                     // margin-bottom: 70px;
                     padding-bottom: 10px;
                     margin-top: -30px;
+                    .v-list-item-title{
+                        .in-terminal-i {
+                            font-size: 17px !important;
+                        }
+                    }
                     .v-list-item-subtitle {
                         font-family: 'Roboto Mono', monospace;
                         display: table-caption;
@@ -899,7 +1164,7 @@
         animation: fadeInOut 1s ease-in-out infinite;
     }
 
-    .box-show {
+    .bounce {
         animation: scaleBounce 0.7s ease-in-out;
     }
 

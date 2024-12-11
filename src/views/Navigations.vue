@@ -11,7 +11,7 @@
                     base-color="white"
                     bg-color="#333"
                     variant="solo"
-                    label="Entrez une commande (cd, ls, mkdir, touch, help...)"
+                    label="Entrez une commande (cd, ls, mkdir, touch, chmod...)"
                     @keyup.enter="executeCommand()"
                     @keyup="naveTerminal($event)"
                     placeholder="Par exemple : cd documents"
@@ -60,7 +60,7 @@
                     >
                         <v-icon 
                             icon="mdi-circle-medium"
-                            style="opacity: 0.5;"
+                            style="opacity: 0.8;"
                         ></v-icon>
                     </v-breadcrumbs-divider>
 
@@ -91,7 +91,16 @@
                 v-else
                 style="padding: 7px 19px;"
             >
+
+                <div v-if="pwd.length > 0">
+                    <v-icon 
+                        icon="mdi-circle-medium"
+                    >
+                    </v-icon>
+                </div>
+
                 <v-tooltip 
+                    v-else
                     max-width="250"
                     text="Entrez la comande 'pwd' afin de savoir si vous n'êtes pas perdue."
                 >
@@ -110,6 +119,153 @@
                         </v-btn>
                     </template>
                 </v-tooltip>
+
+            </div>
+
+            <div v-if="chmodInfos.data.user.length > 0">
+                <h3 style="text-align: center; font-weight: 200;">
+                    commande : <span style="font-weight: bold;">chmod</span>
+                    <v-tooltip 
+                        max-width="250"
+                        text="permet de configurer l'accès aux fichiers et aux répertoires"
+                    >
+                        <template v-slot:activator="{ props }">
+                            <v-btn 
+                                v-bind="props"
+                                icon
+                                variant="plain"
+                                class="bounce"
+                                @click="command='chmod 755 <filename>'"
+                            >
+                                <v-icon 
+                                    icon="mdi-information-slab-circle-outline"
+                                >
+                                </v-icon>
+                            </v-btn>
+                        </template>
+                    </v-tooltip>
+                </h3>
+
+                <h2 style="text-align: center; font-weight: 200;">concernant le {{ chmodInfos.rights.charAt(0) == '-' ? 'fichier' : 'dossier' }} : <span style="font-weight: bold;">{{ chmodInfos.fileName }}</span></h2>
+                
+                <div
+                    class="cont-chmod-card"
+                    style="display: flex;"
+                >
+                    <v-card
+                        class="mx-auto bounce"
+                    >
+                        <!-- <v-list :items="chmodInfos.data.user"></v-list> -->
+                        <v-list>
+                            <v-list-item
+                                v-for="(item, index) in chmodInfos.data.user"
+                                :key="index"
+                                :value="index"
+                            >
+                                <template v-slot:prepend>
+                                    <v-icon v-if="item.props?.prependIcon" :color="item.props?.color">
+                                        {{ item.props.prependIcon }}
+                                    </v-icon>
+                                </template>
+
+                                <v-list-item-title v-html="item.title"></v-list-item-title>
+
+                                <template v-slot:append>
+                                    <v-icon v-if="item.props?.appendIcon" :color="item.props?.color">
+                                        {{ item.props.appendIcon }}
+                                    </v-icon>
+                                </template>
+                            </v-list-item>
+                        </v-list>
+                    </v-card>
+
+                    <v-card
+                        class="mx-auto bounce"
+                    >
+                        <!-- <v-list :items="chmodInfos.data.group"></v-list> -->
+                        <v-list>
+                            <v-list-item
+                                v-for="(item, index) in chmodInfos.data.group"
+                                :key="index"
+                                :value="index"
+                            >
+                                <template v-slot:prepend>
+                                    <v-icon v-if="item.props?.prependIcon" :color="item.props?.color">
+                                        {{ item.props.prependIcon }}
+                                    </v-icon>
+                                </template>
+
+                                <v-list-item-title>{{ item.title }}</v-list-item-title>
+
+                                <template v-slot:append>
+                                    <v-icon v-if="item.props?.appendIcon" :color="item.props?.color">
+                                        {{ item.props.appendIcon }}
+                                    </v-icon>
+                                </template>
+                            </v-list-item>
+                        </v-list>
+                    </v-card>
+
+                    <v-card
+                        class="mx-auto bounce"
+                    >
+                        <!-- <v-list :items="chmodInfos.data.other"></v-list> -->
+                        <v-list>
+                            <v-list-item
+                                v-for="(item, index) in chmodInfos.data.other"
+                                :key="index"
+                                :value="index"
+                            >
+                                <template v-slot:prepend>
+                                    <v-icon v-if="item.props?.prependIcon" :color="item.props?.color">
+                                        {{ item.props.prependIcon }}
+                                    </v-icon>
+                                </template>
+
+                                <v-list-item-title v-html="item.title"></v-list-item-title>
+
+                                <template v-slot:append>
+                                    <v-icon v-if="item.props?.appendIcon" :color="item.props?.color">
+                                        {{ item.props.appendIcon }}
+                                    </v-icon>
+                                </template>
+                            </v-list-item>
+                        </v-list>
+                    </v-card>
+                </div>
+
+            </div>
+
+            <div
+                v-if="chmodInfos.data.user.length > 0"
+                style="width: 100%; margin: 10px 0px;"
+            >
+                <div style="display: flex;  width: fit-content; margin: auto;">
+                    <div 
+                        v-for="(l, i) in [
+                                {t:'r', bgc:'#DCF50CAA', c:'black'}, 
+                                {t:'w', bgc:'#F51B0CAA', c:'white'}, 
+                                {t:'x', bgc:'#0C81F5AA', c:'white'},
+                                {t:'-', bgc:'#3D6FA0AA', c:'white', val:0}
+                            ]"
+                        :key="i"
+                    >
+                        <div 
+                            :style="{backgroundColor: l.bgc, color:l.c}"
+                            style="
+                                text-align: center; 
+                                padding: 2px 5px; 
+                                border-bottom: 1px dashed white"
+                        >{{ l.t }}</div>
+
+                        <div 
+                            :style="{backgroundColor: l.bgc, color:l.c}"
+                            style="
+                                text-align: center; 
+                                padding: 2px 5px;"
+                        >{{ l.val != undefined ? l.val : 2**(2-i) }}</div>
+                    </div>
+                </div>
             </div>
 
             <div id="output_animate" ref="output_animate"></div>
@@ -206,10 +362,24 @@
             folderTreeData: JSON.parse(JSON.stringify(folderTree)), // Copie locale de folderTree
             commandHistory: [], // Historique des commandes
             cursorHistory: 0,
+            cDirect: {
+                from: null,
+                to: null,
+            },
             ls: {
                 showHidden: false,
                 dirName: ""
-            }
+            },
+            chmodInfos: {
+                fileName: "",
+                rights: "----------",
+                data: {
+                    user: [],
+                    group: [],
+                    other: [],
+                }
+            },
+
         };
     },
     mounted() {
@@ -217,13 +387,194 @@
         this.createOutputAnimate()
     },
     methods: {
+        buidRightsInfos(){
+
+            // 
+            console.log("cdinfos", this.chmodInfos.rights.split(""));
+            const usersR = this.chmodInfos.rights.split("").slice(1, 4);
+            // mdi-pen-plus
+            // mdi-book-open-outline
+            // mdi-robot-excited
+
+            // mdi-pen-remove
+            // mdi-notebook-remove
+            // mdi-robot-off
+
+            this.chmodInfos.data.user = [{
+                            title: "[user] Vous pouvez ", 
+                            value: 0, 
+                            props: {
+                                    prependIcon: 'mdi-account',
+                                }
+                            }];
+
+            let list = {
+                "0": { // not r
+                    title: "[-]",
+                    props: {
+                        appendIcon: 'mdi-notebook-remove',
+                        color: 'red',
+                    }
+                },
+                "1": {// not w
+                    title: "[-]",
+                    props: {
+                        appendIcon: 'mdi-pen-remove',
+                        color: 'red',
+                    }
+                },
+                "2": {// not x
+                    title: "[-]",
+                    props: {
+                        appendIcon: 'mdi-robot-off',
+                        color: 'red',
+                    }
+                },
+                "r": {
+                    title: "[r] le lire", 
+                    value: 1, 
+                    props: {
+                        appendIcon: 'mdi-book-open-outline',
+                        color: 'blue',
+                    }
+                },
+                "w": {
+                    title: "[w] l'écrire", 
+                    value: 2, 
+                    props: {
+                        appendIcon: 'mdi-pen-plus',
+                        color: 'blue',
+                    }
+                },
+                "x": {
+                    title: "[x] l'éxecuter", 
+                    value: 3, 
+                    props: {
+                        appendIcon: 'mdi-robot-excited',
+                        color: 'blue',
+                    }
+                }
+            }
+
+            for (let index = 0; index < usersR.length; index++) {
+                const element = usersR[index];
+                console.log("elemen", element, index.toString());
+                if(element != '-')
+                    this.chmodInfos.data.user.push(list[element])
+                else
+                    this.chmodInfos.data.user.push(list[index.toString()])
+            }
+
+            let binSVal = usersR.map(v => v != '-' ? "1" : "0").reverse().join("")
+            console.log("bin", binSVal);
+            this.chmodInfos.data.user.push({title: `${usersR.join('')} = ${binSVal.split('').map((v, i) => (2**i)*parseInt(v)).reverse().join(" + ")} = ${parseInt(binSVal.split("").reverse().join("").toString(), 2).toString()}`})
+            
+
+            // 
+            list = {
+                "0": { // not r
+                    title: "[-]",
+                    props: {
+                        appendIcon: 'mdi-notebook-remove',
+                        color: 'red',
+                    }
+                },
+                "1": {// not w
+                    title: "[-]",
+                    props: {
+                        appendIcon: 'mdi-pen-remove',
+                        color: 'red',
+                    }
+                },
+                "2": {// not x
+                    title: "[-]",
+                    props: {
+                        appendIcon: 'mdi-robot-off',
+                        color: 'red',
+                    }
+                },
+                "r": {
+                    title: "[r] lirent", 
+                    value: 1, 
+                    props: {
+                        appendIcon: 'mdi-book-open-outline',
+                        color: 'blue',
+                    }
+                },
+                "w": {
+                    title: "[w] écrirent", 
+                    value: 2, 
+                    props: {
+                        appendIcon: 'mdi-pen-plus',
+                        color: 'blue',
+                    }
+                },
+                "x": {
+                    title: "[x] éxecuter", 
+                    value: 3, 
+                    props: {
+                        appendIcon: 'mdi-robot-excited',
+                        color: 'blue',
+                    }
+                }
+            }
+
+            // group
+            const groupR = this.chmodInfos.rights.split("").slice(4, 7);
+            this.chmodInfos.data.group = [{
+                                    title: "[group] les membres du groupe peuvent", 
+                                    value: 0, 
+                                    props: {
+                                        prependIcon: 'mdi-account-group',
+                                    }
+                                }]
+            for (let index = 0; index < groupR.length; index++) {
+                const element = groupR[index];
+                
+                if(element != '-')
+                    this.chmodInfos.data.group.push(list[element])
+                else
+                    this.chmodInfos.data.group.push(list[index.toString()])
+            }
+
+            binSVal = groupR.map(v => v != '-' ? "1" : "0").reverse().join("")
+            this.chmodInfos.data.group.push({title: `${groupR.join('')} = ${binSVal.split('').map((v, i) => (2**i)*parseInt(v)).reverse().join(" + ")} = ${parseInt(binSVal.split("").reverse().join("").toString(), 2).toString()}`})
+
+            // others
+            const otherR = this.chmodInfos.rights.split("").slice(7, 10);
+            this.chmodInfos.data.other = [{
+                            title: "[other] Tous les autres peuvent", 
+                            value: 0, 
+                            props: {
+                                    prependIcon: 'mdi-earth',
+                                }
+                            }]
+            for (let index = 0; index < otherR.length; index++) {
+                const element = otherR[index];
+                if(element != '-')
+                    this.chmodInfos.data.other.push(list[element])
+                else
+                    this.chmodInfos.data.other.push(list[index.toString()])
+            }
+            binSVal = otherR.map(v => v != '-' ? "1" : "0").reverse().join("")
+            console.log("b,", binSVal);
+            this.chmodInfos.data.other.push({title: `${otherR.join('')} = ${binSVal.split('').map((v, i) => (2**i)*parseInt(v)).reverse().join(" + ")} = ${parseInt(binSVal.split("").reverse().join("").toString(), 2).toString()}`})
+
+            console.log("user-grou-other", usersR, groupR, otherR);
+
+        },
         createOutputAnimate(){
             const width = 500;
-            const height = 150;
+            const height = 110;
             let i = 0;
             const decalageX = 10;
 
+            const _vue = this;
+
             d3.select(this.$refs.output_animate).select("svg").remove()
+            if(!_vue.cDirect.from)
+                return;
+
             const svg = d3
                 .select(this.$refs.output_animate)
                 .append('svg')
@@ -238,6 +589,7 @@
             g.append('text')
                 .text("COMMANDE [cd] : CHANGE DIRECTORY")
                 .attr('dy', '.35em')
+                .attr('dx', '1.7em')
                 // .attr('x', width/2)
                 .attr("text-anchor", "middle") // Centre horizontalement
                 .attr("dominant-baseline", "middle") // Centre verticalement
@@ -248,6 +600,17 @@
 
             g = svg.append("g")
                         .attr('transform', (d) => `translate(${decalageX},${height/2})`)
+                    
+            g.append('text')
+                .text(_vue.cDirect.from)
+                .attr('dy', '.15em')
+                .attr('dx', '1em')
+                // .attr('x', width/2)
+                .attr("text-anchor", "middle") // Centre horizontalement
+                .attr("dominant-baseline", "middle") // Centre verticalement
+                // .attr('text-anchor', (d) => (d.children || d._children ? 'end' : 'start'))
+                .attr('font-size', '17px')
+                .style('user-select', 'none');
 
             g.append("foreignObject")
                 .attr('width', 50)
@@ -277,7 +640,7 @@
                     .attr("opacity", 1)
                         .transition()
                         .duration(duration)
-                        // .ease(d3.easeLinear)
+                        .ease(d3.easeLinear)
                         .attr("x", width-decalageX-50)
                         .attr("opacity", 0)
                             .on("end", () => {
@@ -290,6 +653,17 @@
 
             g = svg.append("g")
                 .attr('transform', (d) => `translate(${width-decalageX}, ${height/2})`)
+
+            g.append('text')
+                .text(_vue.cDirect.to)
+                .attr('dy', '.15em')
+                .attr('dx', '1em')
+                // .attr('x', width/2)
+                .attr("text-anchor", "middle") // Centre horizontalement
+                .attr("dominant-baseline", "middle") // Centre verticalement
+                // .attr('text-anchor', (d) => (d.children || d._children ? 'end' : 'start'))
+                .attr('font-size', '17px')
+                .style('user-select', 'none');
             
             g.append("foreignObject")
                 .attr('width', 50)
@@ -312,7 +686,11 @@
                 .attr('height', height)
                 .attr('viewBox', [-100, -100, width + 100, height + 100])
                 .style('overflow', 'visible');
-                
+            
+            const tooltip = d3.select("body")
+                .append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
     
             let root = d3.hierarchy(this.folderTreeNoHidden);
             this.root = root;
@@ -320,15 +698,19 @@
             root.y0 = 0;
     
             if (!this.currentNode) {
-                this.currentNode = root; // Initialement, le dossier courant est la racine
+                this.currentNode = root;
                 setTimeout(function(){
                     this.changeDirectory("home/user")
+                    this.cDirect.from = null;
+                    this.createOutputAnimate()
                 }.bind(this), 750)
             } 
             else {
-                this.currentNode = root; // Initialement, le dossier courant est la racine
+                this.currentNode = root;
                 setTimeout(function(){
                     this.changeDirectory(this.pwd)
+                    // this.cDirect.from = null;
+                    // this.createOutputAnimate()
                 }.bind(this), 50)
             }
 
@@ -359,12 +741,24 @@
                 nodeExit.select('text').style('fill-opacity', 0.6);
     
                 // Ajouter de nouveaux nœuds
-                
                 const nodeEnter = node
                     .enter()
                     .append('g')
-                    .attr('class', (d) => d.id == this.currentNode?.id ? 'node current' : 'node')
+                    .attr('class', (d) => d.id == this.currentNode?.id && d?.data?.name == _vue.currentNode?.data?.name && d?.depth == _vue.currentNode?.depth ? 'node current' : 'node')
                     .attr('transform', (d) => `translate(${width+1000},${height/2})`)
+                    .on("mouseover", (event, d) => {
+                        tooltip.transition().duration(200).style("opacity", 1);
+                        tooltip.html(d.data.name != 'root' ? d.data.name : '/')
+                                .style("left", (event.pageX + 10) + "px")
+                                .style("top", (event.pageY - 10) + "px");
+                    })
+                    .on("mousemove", (event) => {
+                        tooltip.style("left", (event.pageX + 10) + "px")
+                                .style("top", (event.pageY - 10) + "px");
+                    })
+                    .on("mouseout", () => {
+                        tooltip.transition().duration(200).style("opacity", 0);
+                    })
                     .on('click', (event, d) => {
                         if (d.children) {
                             d._children = d.children;
@@ -383,7 +777,6 @@
                     .attr('transform', 'scale(0)')
                     .remove()
     
-                
                 nodeEnter.each(function(d) {
                     // Vérifier la valeur de 'type' pour chaque nœud
                     if (d.data.type == 'd') {// directory
@@ -427,7 +820,6 @@
                     .html(
                         (d) => d.data.type == 'd' ? ((d._children ? '<i class="mdi mdi-folder  mdi-icon-folder" style="font-size: 40px"></i>' : '<i class="mdi mdi-folder-open mdi-icon-folder" style="font-size: 40px"></i>'))  : '<i class="mdi mdi-file-chart-outline mdi-icon-folder" style="font-size: 40px"></i>');
                                         
-    
                 // Mise à jour des nœuds existants
                 const nodeUpdate = nodeEnter.merge(node);
     
@@ -446,11 +838,11 @@
                     .attr("class", (d) => d.id == _vue.currentNode?.id ? "fadein" : "")
                     .html(
                         (d) => d.data.type == 'd' ? 
-                                ((d._children ? '<i class="mdi mdi-folder  mdi-icon-folder" style="font-size: 40px"></i>' : (d.data.children.length != 0 ? '<i class="mdi mdi-folder-open mdi-icon-folder" style="font-size: 40px"></i>' : '<i class="mdi mdi-folder-hidden mdi-icon-folder" style="font-size: 40px"></i>'))) 
+                                ((d?._children ? '<i class="mdi mdi-folder  mdi-icon-folder" style="font-size: 40px"></i>' : (d.data?.children.length != 0 ? '<i class="mdi mdi-folder-open mdi-icon-folder" style="font-size: 40px"></i>' : '<i class="mdi mdi-folder-hidden mdi-icon-folder" style="font-size: 40px"></i>'))) 
                             : '<i class="mdi mdi-file-chart-outline mdi-icon-folder" style="font-size: 40px"></i>');
 
                 nodeUpdate.each(function(d) {
-                    if( _vue.currentNode?.id == d.id ){
+                    if( _vue.currentNode?.id == d.id && d?.data?.name == _vue.currentNode?.data?.name && d?.depth == _vue.currentNode?.depth ){
                         d3.select(this)
                             .append('circle')
                             .attr("class", "indicator-current")
@@ -471,16 +863,15 @@
                     .transition()
                     .duration(750)
                     .attr('fill', (d) => {
-                        if (d.id == this.currentNode?.id) {
+                        if (d.id == this.currentNode?.id && d?.data?.name == _vue.currentNode?.data?.name && d?.depth == _vue.currentNode?.depth) {
                             return 'orange';
                         }
                         return d._children ? 'lightsteelblue' : '#fff';
                     })
-                    .attr('stroke-width', (d) => (d.id == this.currentNode?.id ? 4 : 2))
-                    .attr('stroke', (d) => (d.id == this.currentNode?.id ? 'black' : 'steelblue'))
+                    .attr('stroke-width', (d) => (d.id == _vue.currentNode?.id && d?.data?.name == _vue.currentNode?.data?.name && d?.depth == _vue.currentNode?.depth ? 4 : 2))
+                    .attr('stroke', (d) => (d.id == _vue.currentNode?.id ? 'black' : 'steelblue'))
                 
                
-
                 // Liens entre les nœuds
                 const links = this.root.links();
                 const link = svg.selectAll('path.link').data(links, (d) => d.target.id);
@@ -618,7 +1009,11 @@
             const cmd = args[0];
             const param = args.slice(1);
             let state = 'valid';
-    
+
+            this.cDirect.from = null;
+            this.chmodInfos.data.user = [];
+            this.createOutputAnimate()
+
             switch (cmd) {
                 case 'chmod':
                     state = this.chmodItem(param[1], param[0]);
@@ -670,9 +1065,11 @@
         },
         pathWayDirectory(){
             this.output = this.getPath(this.currentNode).replace("root", "");
-            this.pwd = this.output;
+            
             if(this.output=="")
                 this.output="/"
+            
+            this.pwd = this.output;
         },
         changeDirectory(params) {
             let _dirName = ""
@@ -680,27 +1077,70 @@
                 _dirName = params[0];
             else//path
                 _dirName = params;
+
+            function closeChilds(node){
+                if (node.children) {
+                    for (let index = 0; index < node.children.length; index++) {
+                        const element = node.children[index];
+                        closeChilds(element)
+                    }
+                    node._children = node.children;
+                    node.children = null;
+                }
+                else if(node._children){
+                    for (let index = 0; index < node._children.length; index++) {
+                        const element = node._children[index];
+                        closeChilds(element)
+                    }
+                }
+            }
             
+            this.cDirect.from = this.currentNode.data.name;
+            
+
             if(!_dirName){
                 this.currentNode = this.root;
+                closeChilds(this.currentNode)
                 this.changeDirectory("home/user")
+                this.cDirect.to = this.currentNode.data.name;
                 this.output = `Deplacement vers le dossier personnel (par default) : ${this.currentNode.data.name}`;
-                this.updateTree(this.currentNode); 
+                this.updateTree(this.currentNode);
                 return "valid";
             }
             else if(_dirName=='/'){
+
+                // closed
+                if (this.currentNode.children && !this.currentNode._children) {
+                    this.currentNode._children = this.currentNode.children;
+                    this.currentNode.children = null;
+                }
+
                 this.currentNode = this.root;
+                
+                this.cDirect.to = this.currentNode.data.name;
+
+                // closed if opened
+                closeChilds(this.currentNode)
+                // this.currentNode.children?.forEach((child) => {
+                //     console.log("opensls ls");
+                //     if (child.children) {
+                //         child._children = child.children;
+                //         child.children = null;
+                //     }
+                // });
             }
             else {
                 if(_dirName[0]=='/'){
+                    
                     this.currentNode = this.root;
+                    closeChilds(this.currentNode)
                 }
                 const _dirNames = _dirName.split("/")
                 
                 for (let index = 0; index < _dirNames.length; index++) {
                     const dirName = _dirNames[index];
                     if(dirName != ""){
-                        if (dirName === '..' && this.currentNode) {
+                        if (dirName === '..' && this.currentNode && this.currentNode != this.root) {
                             if (this.currentNode.parent.children) {
                                 this.currentNode.parent.children.forEach((child) => {
                                     if (child.children) {
@@ -713,7 +1153,7 @@
                             }
                             this.currentNode = this.currentNode.parent;
                         } 
-                        else {
+                        else if( ! (dirName === '..' && this.currentNode) ) {
                             const found = this.currentNode.children?.find((d) => d.data.name === dirName && d.data.type == "d") || this.currentNode._children?.find((d) => d.data.name === dirName &&  d.data.type == "d");
                             
                             if (found) {
@@ -738,13 +1178,18 @@
                 }
             }
 
+            this.cDirect.to = this.currentNode.data.name;
+            // console.log("cd:", this.cDirect);
+
             this.pwd = ""
             this.output = `Dossier actuel : ${this.currentNode.data.name}`;
-            this.updateTree(this.currentNode); 
+            this.createOutputAnimate()
+            this.updateTree(this.currentNode);
             return 'valid'
         },
         listDirectory(params) {
             const _vue = this;
+
             function foundChild(dic, name){
                 if(dic?.data.name == name){
                     return dic
@@ -756,17 +1201,28 @@
                         if(element?.data.name == name){
                             return element
                         }
-                        return foundChild(element, name)
+
+                        const _tmp = foundChild(element, name)
+
+                        if(_tmp)
+                            return _tmp
                     }
                 }
-                return _vue.currentNode;
+                return null;
             }
+
+            // if( !this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("r") || !this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("x") ){
+            //     this.output = "Permissions non accordées";
+            //     console.log("hllll");
+            //     return;
+            // }
 
             // console.log("folderTreeData", this.folderTreeData);
             const currentNodeTemp = foundChild(d3.hierarchy(this.folderTreeData), this.currentNode.data.name)
             // const children = this.currentNode.children || this.currentNode._children || [];
             // console.log("currentNodeTemp", currentNodeTemp);
             if ( this.currentNode._children ) {
+                console.log("ls show childs");
                 this.currentNode.children = this.currentNode._children;
                 this.currentNode._children = null;
             }
@@ -775,17 +1231,17 @@
                 this.ls.showHidden = true;
             }
 
-            if( params.some((p) => /-[^ ]*l[^ ]*/.test(p)) ){        
+            if( currentNodeTemp && params.some((p) => /-[^ ]*l[^ ]*/.test(p)) && currentNodeTemp.children ){        
                 this.output = currentNodeTemp.children.filter((child) => !child.data?.hidden || params.some((p) => /-[^ ]*a[^ ]*/.test(p))).map((child) => {
                         return `${child.data.rights}  ${child.data.user}  ${child.data.group}  ${child.data.date}  ${child.data.name}`.replaceAll(" ", "&nbsp;")
                     }).join('\n');
             }
-            else if( params.includes("-a") ){
+            else if( currentNodeTemp && params.includes("-a") && currentNodeTemp.children ){
                 this.output = currentNodeTemp.children.map((child) => {
                         return child.data.name
                     }).join('\n');
             }
-            else if( params.length == 0 ){
+            else if(currentNodeTemp && params.length == 0 && currentNodeTemp.children ){
                 this.output = currentNodeTemp.children.filter((child) => !child.data.hidden).map((child) => child.data.name).join('\n');
             }
             
@@ -924,32 +1380,56 @@
                 return;
             }
 
-            let children = this.currentNode.children || this.currentNode._children;
-            
-            let index = 0;
-            for (let index = 0; index < params.length; index++) {
-                
-                const element = params[index]; 
-                
-                if(!element.includes("-")){// not option
-                    if(!params.includes("-r") ){
-                        index = children.findIndex((child) => child.data.name === element && child.data.type !== "d");
+            function remove(tree, child){
+                if(tree?.name == child.parent.data.name && tree?.date == child.parent?.data.date){
+                    const index = tree.children.findIndex((_child) => _child.name === child.data.name);
+                    tree.children.splice(index, 1);
+                    return;
+                }
+                else{
+                    if(tree?.children){
+                        for (let index = 0; index < tree?.children.length; index++) {
+                            const element = tree.children[index];
+                            remove(element, child)
+                        }
                     }
-                    else{
-                        index = children.findIndex((child) => child.data.name === element);
-                    }
-
-                    if (index === -1) {
-                        this.output = `Erreur : Élément '${element}' introuvable`;
-                        this.listDirectory()
-                        return;
-                    }
-                    
-                    children.splice(index, 1);
                 }
             }
-            this.listDirectory()
-            // this.updateTree(this.currentNode);
+
+            let children = this.currentNode.children || this.currentNode._children;
+            // console.log("data-before", this.folderTreeData)
+            // console.log("params", params, children);
+            if( this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("w") && this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("x") ){
+                for (let index = 0; index < params.length; index++) {
+                    const element = params[index]; 
+                    
+                    if( ! element.includes("-") ){// not option
+                        if( ! params.includes("-r") ){
+                            index = children.findIndex((child) => child.data.name === element && child.data.type !== "d");
+                        }
+                        else{
+                            index = children.findIndex((child) => child.data.name === element);
+                        }
+
+                        if (index === -1) {
+                            this.output = `Erreur : Élément '${element}' introuvable`;
+                            return;
+                        }
+
+                        let child = children[index];
+
+                        remove(this.folderTreeData, child)
+                        
+                        children.splice(index, 1);
+                    }
+                }
+            }
+            else{
+                this.output = `Vous ne possédez pas les droits nécessaire pour supprimé cet élément '${params}'`;
+                return;
+            }
+            // console.log("data", this.folderTreeData, "|", this.folderTreeNoHidden, "|", children)
+            this.updateTree(this.currentNode);
             this.output = `Élément '${params}' supprimé avec succès`;
         },
         getPath(node) {
@@ -970,6 +1450,9 @@
                 return "warning";
             }
 
+            this.chmodInfos.fileName = "";
+            this.chmodInfos.rights = "----------";
+
             // format numérique (ex: 755)
             if (/^[0-7]{3}$/.test(permissions)) {
                 let permStr = this.convertNumericPermissions(permissions);
@@ -984,6 +1467,11 @@
                 delete target.depth;
                 delete target._children;
                 delete target.height;
+
+                this.chmodInfos.fileName = name;
+                this.chmodInfos.rights = target.rights;
+
+                this.buidRightsInfos()
 
                 this.updateNode(this.folderTreeData, name, target.depth, target)
             }
@@ -1000,6 +1488,11 @@
                 delete target._children;
                 delete target.height;
 
+                this.chmodInfos.fileName = name;
+                this.chmodInfos.rights = target.rights;
+
+                this.buidRightsInfos()
+
                 this.updateNode(this.folderTreeData, name, target.depth, target)
             }
             else {
@@ -1008,7 +1501,7 @@
             }
 
             this.root = d3.hierarchy(this.folderTreeData)
-            
+
             this.createTree();
             this.output = `Permissions de '${itemName}' mises à jour en '${target.rights}'`;
             return "valid"
@@ -1059,7 +1552,7 @@
             }
 
             // complete les caracteere
-            updated = updated.split('').sort().join('').padEnd(3, '-');
+            // updated = updated.split('').sort().join('').padEnd(3, '-');
 
             return updated;
         }
@@ -1149,6 +1642,22 @@
 
     .mdi-icon-folder {
         color: #535050;
+    }
+
+    .tooltip {
+        position: absolute;
+        background-color: #333;
+        color: white;
+        border-radius: 2px 5px;
+        padding: 1px 10px;
+        pointer-events: none;
+        font-size: 12px;
+    }
+
+    .cont-chmod-card {
+        .v-card {
+            font-family: 'Roboto Mono', monospace;
+        }
     }
 
     @keyframes fadeInOut {

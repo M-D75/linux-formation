@@ -38,7 +38,7 @@ export const folderTree = {
       date: "24-11-23 13:40",
       children: [
         { name: 'log', type: "d", rights: "drwxr-xr-x", user: "root", group: "root", date: "24-11-22 12:00", children: [] },
-        { name: 'tmp', type: "d", rights: "drwxrwxrwt", user: "root", group: "root", date: "24-11-23 12:30", children: [] },
+        { name: 'tmp', type: "d", rights: "drwxrwxrwx", user: "root", group: "root", date: "24-11-23 12:30", children: [] },
       ],
     },
     {

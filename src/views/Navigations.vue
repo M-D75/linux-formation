@@ -1,6 +1,8 @@
 <template>
     <v-container>
+        <!-- Main container for command input and tree visualization -->
         <div class="cont-cmd-graph-navigaion" style="display: flex;">
+            <!-- Command input section -->
             <div class="cont-cmd">
                 <v-text-field
                     v-model="command"
@@ -11,12 +13,14 @@
                     base-color="white"
                     bg-color="#333"
                     variant="solo"
-                    label="Entrez une commande (cd, ls, mkdir, touch, chmod...)"
+                    label="Entrez une commande (help, cd, ls, mkdir, touch, chmod...)"
                     @keyup.enter="executeCommand()"
                     @keyup="naveTerminal($event)"
+                    @keydown.tab.prevent="autoCompleteCommand"
                     placeholder="Par exemple : cd documents"
                 ></v-text-field>
 
+                <!-- Command output section -->
                 <v-list 
                     class="output-cmd"
                     ref="outputCmd"
@@ -43,9 +47,11 @@
                 </v-list>
             </div>
 
+            <!-- Tree visualization section -->
             <div id="tree" ref="tree"></div>
         </div>
 
+        <!-- Breadcrumbs for current directory path -->
         <div style="margin-top: 20px;">
             <v-breadcrumbs 
                 v-if="pwd.split('/').slice(1).length > 0"
@@ -87,6 +93,7 @@
                 </div>
             </v-breadcrumbs>
 
+            <!-- Tooltip for current directory -->
             <div
                 v-else
                 style="padding: 7px 19px;"
@@ -122,6 +129,7 @@
 
             </div>
 
+            <!-- chmod command information -->
             <div v-if="chmodInfos.data.user.length > 0">
                 <h3 style="text-align: center; font-weight: 200;">
                     commande : <span style="font-weight: bold;">chmod</span>
@@ -152,6 +160,7 @@
                     class="cont-chmod-card"
                     style="display: flex;"
                 >
+                    <!-- User permissions -->
                     <v-card
                         class="mx-auto bounce"
                     >
@@ -179,6 +188,7 @@
                         </v-list>
                     </v-card>
 
+                    <!-- Group permissions -->
                     <v-card
                         class="mx-auto bounce"
                     >
@@ -206,6 +216,7 @@
                         </v-list>
                     </v-card>
 
+                    <!-- Other permissions -->
                     <v-card
                         class="mx-auto bounce"
                     >
@@ -236,6 +247,7 @@
 
             </div>
 
+            <!-- chmod permissions legend -->
             <div
                 v-if="chmodInfos.data.user.length > 0"
                 style="width: 100%; margin: 10px 0px;"
@@ -268,8 +280,10 @@
                 </div>
             </div>
 
+            <!-- Animation for directory change -->
             <div id="output_animate" ref="output_animate"></div>
 
+            <!-- Command history -->
             <div 
                 id="history-cmd"
             >
@@ -279,7 +293,7 @@
                     label="Historique des commandes"
                 > -->
                     <div 
-                        v-if="commandHistory.length==0"
+                        v-if="commandHistory.filter((cmd) => cmd.command != '').length==0"
                         style="text-align: center;"
                     >
                         <v-chip 
@@ -295,7 +309,7 @@
                         v-else
                     >
                         <v-chip 
-                            v-for="(cmd, index) in commandHistory" 
+                            v-for="(cmd, index) in commandHistory.filter((cmd) => cmd.command != '')" 
                             :key="index"
                             :color="cmd.state == 'valid' ? 'green-accent-2' : (cmd.state == 'error' ? 'red-lighten-1' : 'amber-accent-4')"
                             :prepend-icon="cmd.state == 'valid' ? 'mdi-check-circle' : (cmd.state == 'error' ? 'mdi-close-circle' : 'mdi-alert-circle')"
@@ -320,37 +334,7 @@
   export default {
     name: 'FolderTree',
     computed: {
-        folderTreeNoHidden(){
-            console.log("BEGIN", JSON.parse(JSON.stringify(this.folderTreeData)));
-            let foldersNoHidden = JSON.parse(JSON.stringify((this.folderTreeData)));
 
-            const _vue = this;
-            function filterChild(children){
-                children = children.filter((child) => (
-                        (!_vue.ls.showHidden 
-                        && !child?.hidden 
-                        && child.name[0] != '.'))
-                    )
-
-                children.forEach(child => {
-                    if(child?.children && child.children.length != 0)
-                        child.children = filterChild(child.children)
-                });
-                return children;
-            }
-
-            if(!this.ls.showHidden){
-                foldersNoHidden.children = filterChild(foldersNoHidden.children)
-            }
-            else{
-                this.ls.showHidden = false;
-                this.ls.dirName = ""
-            }
-
-            console.log("END", this.folderTreeData);
-
-            return foldersNoHidden;
-        },
     },
     data() {
         return {
@@ -379,7 +363,6 @@
                     other: [],
                 }
             },
-
         };
     },
     mounted() {
@@ -388,10 +371,9 @@
     },
     methods: {
         buidRightsInfos(){
-
             // 
-            console.log("cdinfos", this.chmodInfos.rights.split(""));
             const usersR = this.chmodInfos.rights.split("").slice(1, 4);
+
             // mdi-pen-plus
             // mdi-book-open-outline
             // mdi-robot-excited
@@ -458,7 +440,7 @@
 
             for (let index = 0; index < usersR.length; index++) {
                 const element = usersR[index];
-                console.log("elemen", element, index.toString());
+
                 if(element != '-')
                     this.chmodInfos.data.user.push(list[element])
                 else
@@ -466,10 +448,8 @@
             }
 
             let binSVal = usersR.map(v => v != '-' ? "1" : "0").reverse().join("")
-            console.log("bin", binSVal);
             this.chmodInfos.data.user.push({title: `${usersR.join('')} = ${binSVal.split('').map((v, i) => (2**i)*parseInt(v)).reverse().join(" + ")} = ${parseInt(binSVal.split("").reverse().join("").toString(), 2).toString()}`})
             
-
             // 
             list = {
                 "0": { // not r
@@ -521,16 +501,17 @@
 
             // group
             const groupR = this.chmodInfos.rights.split("").slice(4, 7);
+
             this.chmodInfos.data.group = [{
                                     title: "[group] les membres du groupe peuvent", 
                                     value: 0, 
                                     props: {
                                         prependIcon: 'mdi-account-group',
                                     }
-                                }]
+                                }];
+
             for (let index = 0; index < groupR.length; index++) {
                 const element = groupR[index];
-                
                 if(element != '-')
                     this.chmodInfos.data.group.push(list[element])
                 else
@@ -548,27 +529,26 @@
                             props: {
                                     prependIcon: 'mdi-earth',
                                 }
-                            }]
+                            }];
+
             for (let index = 0; index < otherR.length; index++) {
                 const element = otherR[index];
+
                 if(element != '-')
                     this.chmodInfos.data.other.push(list[element])
                 else
                     this.chmodInfos.data.other.push(list[index.toString()])
             }
+
             binSVal = otherR.map(v => v != '-' ? "1" : "0").reverse().join("")
-            console.log("b,", binSVal);
             this.chmodInfos.data.other.push({title: `${otherR.join('')} = ${binSVal.split('').map((v, i) => (2**i)*parseInt(v)).reverse().join(" + ")} = ${parseInt(binSVal.split("").reverse().join("").toString(), 2).toString()}`})
-
-            console.log("user-grou-other", usersR, groupR, otherR);
-
         },
         createOutputAnimate(){
             const width = 500;
             const height = 110;
+
             let i = 0;
             const decalageX = 10;
-
             const _vue = this;
 
             d3.select(this.$refs.output_animate).select("svg").remove()
@@ -576,7 +556,7 @@
                 return;
 
             const svg = d3
-                .select(this.$refs.output_animate)
+            .select(this.$refs.output_animate)
                 .append('svg')
                 .attr('width', width)
                 .attr('height', height)
@@ -596,7 +576,6 @@
                 // .attr('text-anchor', (d) => (d.children || d._children ? 'end' : 'start'))
                 .attr('font-size', '17px')
                 .style('user-select', 'none');
-
 
             g = svg.append("g")
                         .attr('transform', (d) => `translate(${decalageX},${height/2})`)
@@ -676,11 +655,14 @@
         createTree() {
             const width = 1500;
             const height = 800;
+
             let i = 0;
+            let children_initiated = false;
 
             d3.select(this.$refs.tree).select("svg").remove()
+
             const svg = d3
-                .select(this.$refs.tree)
+            .select(this.$refs.tree)
                 .append('svg')
                 .attr('width', width)
                 .attr('height', height)
@@ -688,11 +670,11 @@
                 .style('overflow', 'visible');
             
             const tooltip = d3.select("body")
-                .append("div")
+            .append("div")
                 .attr("class", "tooltip")
                 .style("opacity", 0);
     
-            let root = d3.hierarchy(this.folderTreeNoHidden);
+            let root = d3.hierarchy(this.folderTreeData);
             this.root = root;
             root.x0 = height / 2;
             root.y0 = 0;
@@ -715,22 +697,20 @@
             }
 
             const update = (source) => {
+
                 if(source.id == this.root.id)
                     i = 0;
                 
-                // console.log("source", source, this.root);
                 const treeLayout = d3.tree().size([height, width - 120]);
                 treeLayout(this.root);
-
-    
                 const nodes = this.root.descendants();
                 const node = svg.selectAll('g.node').data(nodes, (d) => d.id || (d.id = ++i));
-                
+
                 const _vue = this;
 
                 // Supprimer les anciens nœuds
                 const nodeExit = node
-                    .exit()
+                .exit()
                     .transition()
                     .duration(500)
                     .attr('transform', (d) => `translate(${source.y},${source.x})`)
@@ -742,7 +722,7 @@
     
                 // Ajouter de nouveaux nœuds
                 const nodeEnter = node
-                    .enter()
+                .enter()
                     .append('g')
                     .attr('class', (d) => d.id == this.currentNode?.id && d?.data?.name == _vue.currentNode?.data?.name && d?.depth == _vue.currentNode?.depth ? 'node current' : 'node')
                     .attr('transform', (d) => `translate(${width+1000},${height/2})`)
@@ -761,12 +741,12 @@
                     })
                     .on('click', (event, d) => {
                         if (d.children) {
-                            d._children = d.children;
+                            // d._children = d.children;
                             d.children = null;
                         } 
                         else {
                             d.children = d._children;
-                            d._children = null;
+                            // d._children = null;
                         }
                         update(d);
                     });
@@ -819,10 +799,10 @@
                     .attr("height", 200)
                     .html(
                         (d) => d.data.type == 'd' ? ((d._children ? '<i class="mdi mdi-folder  mdi-icon-folder" style="font-size: 40px"></i>' : '<i class="mdi mdi-folder-open mdi-icon-folder" style="font-size: 40px"></i>'))  : '<i class="mdi mdi-file-chart-outline mdi-icon-folder" style="font-size: 40px"></i>');
-                                        
+
                 // Mise à jour des nœuds existants
                 const nodeUpdate = nodeEnter.merge(node);
-    
+                
                 // Transition des nœuds vers leur nouvelle position
                 nodeUpdate
                     .transition()
@@ -838,7 +818,7 @@
                     .attr("class", (d) => d.id == _vue.currentNode?.id ? "fadein" : "")
                     .html(
                         (d) => d.data.type == 'd' ? 
-                                ((d?._children ? '<i class="mdi mdi-folder  mdi-icon-folder" style="font-size: 40px"></i>' : (d.data?.children.length != 0 ? '<i class="mdi mdi-folder-open mdi-icon-folder" style="font-size: 40px"></i>' : '<i class="mdi mdi-folder-hidden mdi-icon-folder" style="font-size: 40px"></i>'))) 
+                                ((d?._children ? '<i class="mdi mdi-folder  mdi-icon-folder" style="font-size: 40px"></i>' : (d.data?.children?.length != 0 ? '<i class="mdi mdi-folder-open mdi-icon-folder" style="font-size: 40px"></i>' : '<i class="mdi mdi-folder-hidden mdi-icon-folder" style="font-size: 40px"></i>'))) 
                             : '<i class="mdi mdi-file-chart-outline mdi-icon-folder" style="font-size: 40px"></i>');
 
                 nodeUpdate.each(function(d) {
@@ -866,19 +846,22 @@
                         if (d.id == this.currentNode?.id && d?.data?.name == _vue.currentNode?.data?.name && d?.depth == _vue.currentNode?.depth) {
                             return 'orange';
                         }
-                        return d._children ? 'lightsteelblue' : '#fff';
+                        return d._children ? '#00A5DB' : '#fff';
                     })
-                    .attr('stroke-width', (d) => (d.id == _vue.currentNode?.id && d?.data?.name == _vue.currentNode?.data?.name && d?.depth == _vue.currentNode?.depth ? 4 : 2))
-                    .attr('stroke', (d) => (d.id == _vue.currentNode?.id ? 'black' : 'steelblue'))
+                    .attr('stroke-width', (d) => (d.id == _vue.currentNode?.id && d?.data?.name == _vue.currentNode?.data?.name && d?.depth == _vue.currentNode?.depth ? 6 : 4))
+                    .attr('stroke', (d) => (d.id == _vue.currentNode?.id ? 'black' : '#232B33'))
+                    
                 
                
                 // Liens entre les nœuds
                 const links = this.root.links();
+
                 const link = svg.selectAll('path.link').data(links, (d) => d.target.id);
-    
+
+                
                 // Supprimer les anciens liens
-                link
-                    .exit()
+                link.exit()
+                    // .interrupt()
                     .transition()
                     .duration(750)
                     .attr('d', (d) => {
@@ -888,24 +871,41 @@
                     .remove();
     
                 // Ajouter de nouveaux liens
-                const linkEnter = link
-                    .enter()
+                const linkEnter = link.enter()
                     .insert('path', 'g')
                     .attr('class', 'link')
+                    .attr('opacity', 1)
                     .attr('d', (d) => {
                         const o = { x: source.x0, y: source.y0 };
                         return diagonal(o, o);
                     })
                     .attr('fill', 'none')
-                    .attr('stroke', '#ccc')
-                    .attr('stroke-width', 2);
-    
+                    .attr('stroke', (d) => _vue.isPathToCurrentNode(d.target) ? (!_vue.pwd || _vue.pwd == "" ? 'orange' : 'blue') : '#ccc')
+                    .attr('stroke-width', (d) => _vue.isPathToCurrentNode(d.target) ? 17 : 2)
+                    .attr('stroke-dasharray', (d) => _vue.isPathToCurrentNode(d.target) ? '6 9' : '0')
+
                 // Mettre à jour les liens existants
                 linkEnter.merge(link)
                     .transition()
                     .duration(750)
-                    .attr('d', (d) => diagonal(d.source, d.target));
-    
+                    .attr('d', (d) => diagonal(d.source, d.target))
+                    .attr('stroke', (d) => _vue.isPathToCurrentNode(d.target) ? (!_vue.pwd || _vue.pwd == "" ? 'orange' : 'blue') : '#ccc')
+                    .attr('stroke-width', (d) => _vue.isPathToCurrentNode(d.target) ? 17 : 2)
+                    .attr('stroke-dasharray', (d) => _vue.isPathToCurrentNode(d.target) ? '6 9' : '0')
+                    .attr('class', (d) => _vue.isPathToCurrentNode(d.target) ? 'link fadein' : 'link')
+                    // .on('end', function repeat(d) {
+                    //     if (_vue.isPathToCurrentNode(d.target)) {
+                    //         d3.select(this)
+                    //             .transition()
+                    //             .duration(500)
+                    //             .attr('opacity', 0.3)
+                    //             .transition()
+                    //             .duration(500)
+                    //             .attr('opacity', 1)
+                    //             .on('end', repeat);
+                    //     }
+                    // });
+
                 nodes.forEach((d) => {
                     d.x0 = d.x;
                     d.y0 = d.y;
@@ -913,24 +913,40 @@
             };
     
             const diagonal = (s, d) => `
+
                 M ${s.y} ${s.x}
                 C ${(s.y + d.y) / 2} ${s.x},
                   ${(s.y + d.y) / 2} ${d.x},
                   ${d.y} ${d.x}
             `;
     
-            this.root.descendants().forEach((d) => {
-                if (d.depth > 0) {
+            if( !children_initiated ){
+
+                this.root.descendants().forEach((d) => {
+                    
                     d._children = d.children;
-                    d.children = null;
-                }
-            });
+                    if (d.depth > 0) {
+                        d.children = null;
+                    }
+                });
+
+                children_initiated = true;
+            }
     
             update(this.root);
             this.updateTree = update; // Stocker la fonction `update` pour les mises à jour futures
         },
+        isPathToCurrentNode(node) {
+            let currentNode = this.currentNode;
+            while (currentNode) {
+                if (currentNode.id === node.id && currentNode.depth == node.depth ) {// Si le nœud actuel est le nœud cible en fonction de l'id et du depth
+                    return true;
+                }
+                currentNode = currentNode.parent;
+            }
+            return false;
+        },
         findNodeInTree(node, nodeName, depth) {
-            // console.log("node", node, nodeName, depth, node?.data?.name, node?.depth);
             if (node?.data?.name == nodeName && (node.depth == depth || depth == undefined) ) {
                 return node;
             }
@@ -938,6 +954,7 @@
             if (node.children) {
                 for (let child of node.children) {
                     const found = this.findNodeInTree(child, nodeName, depth);
+
                     if (found) {
                         return found;
                     }
@@ -946,6 +963,7 @@
             else if(node._children){
                 for (let child of node._children) {
                     const found = this.findNodeInTree(child, nodeName, depth);
+
                     if (found) {
                         return found;
                     }
@@ -960,7 +978,6 @@
             }
 
             if (node_parent.children) {
-                
                 for (let child of node_parent.children) {
                     if (child.name == nodeName) {
                         Object.assign(child, node_update);
@@ -984,37 +1001,156 @@
         naveTerminal(event){
             switch (event.key) {
                 case "ArrowUp":
+                
                     if(this.cursorHistory < this.commandHistory.length){
                         this.cursorHistory += 1
                         this.command = this.commandHistory.slice().reverse()[this.cursorHistory-1].command
                     }
+
                     break;
                 case "ArrowDown":
+
                     if(this.cursorHistory - 1 >= 0){
-                        this.cursorHistory -= 1
+                        this.cursorHistory -= 1;
+
                         if(this.cursorHistory == 0){
                             this.command = "";
                             break
                         }
+
                         this.command = this.commandHistory.slice().reverse()[this.cursorHistory-1].command
                     }
+
+                    break;
+                case "Tab":
+
+                    event.preventDefault();
+
+                    if (event.type === 'keydown') {
+                        this.autoCompleteCommand();
+                    }
+
                     break;
                 default:
                     break;
             }
         },
+        autoCompleteCommand() {
+            const args = this.command.trim().split(' ');
+            const cmd = args[0];
+            const param = args.slice(-1).join(' ');
+
+            if ( args.length === 1 ) {// Autocomplétion de la commande
+                const commands = ['help', 'pwd', 'echo', 'cd', 'ls', 'mkdir', 'touch', 'rm', 'chmod'];
+
+                const matches = commands.filter(c => c.startsWith(cmd));
+
+                if (matches.length === 1) {
+                    this.command = matches[0] + ' ';
+                } 
+                else if (matches.length > 1) {
+                    this.output = `Suggestions: ${matches.join(', ')}`;
+
+                    this.commandHistory.push({ 
+                        command: "", 
+                        state: "",
+                        output: this.output,
+                    });
+
+                    setTimeout(()=>{
+                        $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
+                    }, 50)
+                }
+            } 
+            else {// Autocomplétion des paramètres
+                // console.log("args", args);
+                const currentNode = this.currentNode;
+
+                let children = currentNode.children || currentNode._children || [];
+                let matches = [];
+                let pathParts = [];
+                if (param.startsWith('/')) {
+                    // console.log("param", param);
+                    pathParts = param.split('/');
+                    let node = this.root;
+                    for (let i = 1; i < pathParts.length - 1; i++) {
+                        node = node.children?.find(child => child.data.name === pathParts[i]) || node._children?.find(child => child.data.name === pathParts[i]);
+                        if (!node) break;
+                    }
+
+                    if (node) {
+                        children = node.children || node._children || [];
+                        matches = children.filter(child => child.data.name.startsWith(pathParts[pathParts.length - 1])).map(child => child.data.name);
+                    }
+                } 
+                else {
+                    // console.log("param", param);
+                    const lastParam = args[args.length - 1];
+
+                    matches = children.filter(child => child.data.name.startsWith(lastParam)).map(child => child.data.name);
+                }
+
+                console.log(pathParts, matches, pathParts.slice(1, -1).join('/'));
+                
+
+                if ( matches.length === 1 ) {
+                    const newParams = args.slice(1, -1).concat(matches[0]).join(' ');
+                    
+                    // regex qui identifie et récupérer les paramètres de la commande donc qui contient un '-' et un espace'
+                    const _matches = newParams.match(/(-\w+)(\s+|$)/g);
+                    
+                    this.command = `${cmd} ${_matches ? _matches.join(' ') : ''}${param.startsWith('/') ? (pathParts?.length > 2 ? '/' : '') + pathParts.slice(1, -1).join('/') + '/' : ''}${matches[0]}`;
+                } 
+                else if (matches.length > 1) {
+                    this.output = `Suggestions: ${matches.join(', ')}`;
+                    
+                    this.commandHistory.push({ 
+                        command: "", 
+                        state: "",
+                        output: this.output,
+                    });
+                    
+                    setTimeout(()=>{
+                        $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
+                    }, 50)
+                }
+            }
+        },
         executeCommand() {
             this.cursorHistory = 0;
             const args = this.command.trim().split(' ');
+
             const cmd = args[0];
             const param = args.slice(1);
+            
             let state = 'valid';
 
             this.cDirect.from = null;
             this.chmodInfos.data.user = [];
-            this.createOutputAnimate()
+            this.createOutputAnimate();
+
+            if (param.includes('-h')) {
+                this.output = this.getHelp(cmd);
+                
+                this.commandHistory.push({ 
+                    command: this.command, 
+                    state, 
+                    output: this.output 
+                });
+                
+                this.command = '';
+                
+                setTimeout(()=>{
+                    $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
+                }, 50)
+                
+                return;
+            }
 
             switch (cmd) {
+                case 'help':
+                    this.output = this.getHelp();
+                    break;
                 case 'chmod':
                     state = this.chmodItem(param[1], param[0]);
                     break
@@ -1047,10 +1183,10 @@
                     this.output = `Commande inconnue : ${cmd}`;
                     state = 'error';
             }
-    
+
             this.commandHistory.push({ 
                     command: this.command, 
-                    state, 
+                    state,
                     output: state != 'error' ? this.output : `<span style="color: #fe4444">${this.output}<span/>`
                 });
             
@@ -1058,7 +1194,32 @@
                 $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
             }, 50)
            
-            this.command = ''; // Réinitialiser le champ de commande
+            this.command = '';
+        },
+        getHelp(cmd = '') {
+            const helpMessages = {
+                '': `
+                    Commandes disponibles :
+                    - help : Affiche ce message d'aide
+                    - pwd : Affiche le chemin du répertoire courant
+                    - echo : Affiche un message
+                    - cd : Change de répertoire
+                    - ls : Liste les fichiers et dossiers
+                    - mkdir : Crée un nouveau dossier
+                    - touch : Crée un nouveau fichier
+                    - rm : Supprime un fichier ou un dossier
+                    - chmod : Change les permissions d'un fichier ou d'un dossier
+                `,
+                'pwd': 'Usage: pwd [-h]\nAffiche le chemin du répertoire courant.',
+                'echo': 'Usage: echo [-h] [message]\nAffiche un message.',
+                'cd': 'Usage: cd [-h] [répertoire]\nChange de répertoire.',
+                'ls': 'Usage: ls [-h] [-a] [-l]\nListe les fichiers et dossiers.',
+                'mkdir': 'Usage: mkdir [-h] [dossier]\nCrée un nouveau dossier.',
+                'touch': 'Usage: touch [-h] [fichier]\nCrée un nouveau fichier.',
+                'rm': 'Usage: rm [-h] [-r] [fichier|dossier]\nSupprime un fichier ou un dossier.',
+                'chmod': 'Usage: chmod [-h] [permissions] [fichier|dossier]\nChange les permissions d\'un fichier ou d\'un dossier.'
+            };
+            return helpMessages[cmd] || `Commande inconnue : ${cmd}`;
         },
         echo(params){
             this.output = params.join(" ")
@@ -1070,6 +1231,7 @@
                 this.output="/"
             
             this.pwd = this.output;
+            this.updateTree(this.currentNode);
         },
         changeDirectory(params) {
             let _dirName = ""
@@ -1082,14 +1244,16 @@
                 if (node.children) {
                     for (let index = 0; index < node.children.length; index++) {
                         const element = node.children[index];
+
                         closeChilds(element)
                     }
-                    node._children = node.children;
+                    // node._children = node.children;
                     node.children = null;
                 }
                 else if(node._children){
                     for (let index = 0; index < node._children.length; index++) {
                         const element = node._children[index];
+
                         closeChilds(element)
                     }
                 }
@@ -1110,9 +1274,13 @@
             else if(_dirName=='/'){
 
                 // closed
-                if (this.currentNode.children && !this.currentNode._children) {
-                    this.currentNode._children = this.currentNode.children;
+                if (this.currentNode.children) {
+                    if(!this.currentNode._children)
+                        this.currentNode._children = this.currentNode.children;
+                    // this.currentNode._children = this.currentNode.children;
                     this.currentNode.children = null;
+                    console.log("closed", this.currentNode._children);
+                    
                 }
 
                 this.currentNode = this.root;
@@ -1130,36 +1298,39 @@
                 // });
             }
             else {
-                if(_dirName[0]=='/'){
+                if( _dirName[0] == '/' ){
                     
                     this.currentNode = this.root;
                     closeChilds(this.currentNode)
                 }
                 const _dirNames = _dirName.split("/")
+
                 
                 for (let index = 0; index < _dirNames.length; index++) {
                     const dirName = _dirNames[index];
+
                     if(dirName != ""){
                         if (dirName === '..' && this.currentNode && this.currentNode != this.root) {
                             if (this.currentNode.parent.children) {
                                 this.currentNode.parent.children.forEach((child) => {
                                     if (child.children) {
-                                        child._children = child.children;
+                                        // child._children = child.children;
                                         child.children = null;
                                     }
                                 });
-                                this.currentNode.parent._children = this.currentNode.parent.children;
+                                // this.currentNode.parent._children = this.currentNode.parent.children;
                                 this.currentNode.parent.children = null;
                             }
                             this.currentNode = this.currentNode.parent;
                         } 
                         else if( ! (dirName === '..' && this.currentNode) ) {
                             const found = this.currentNode.children?.find((d) => d.data.name === dirName && d.data.type == "d") || this.currentNode._children?.find((d) => d.data.name === dirName &&  d.data.type == "d");
+
                             
                             if (found) {
                                 if (this.currentNode._children && !this.currentNode.children) {
                                     this.currentNode.children = this.currentNode._children;
-                                    this.currentNode._children = null;
+                                    // this.currentNode._children = null;
                                 }
                                 found.children?.forEach((child) => {
                                     if (child.children) {
@@ -1188,8 +1359,7 @@
             return 'valid'
         },
         listDirectory(params) {
-            const _vue = this;
-
+            // const _vue = this;
             function foundChild(dic, name){
                 if(dic?.data.name == name){
                     return dic
@@ -1204,6 +1374,7 @@
 
                         const _tmp = foundChild(element, name)
 
+
                         if(_tmp)
                             return _tmp
                     }
@@ -1211,24 +1382,26 @@
                 return null;
             }
 
-            // if( !this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("r") || !this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("x") ){
-            //     this.output = "Permissions non accordées";
-            //     console.log("hllll");
-            //     return;
-            // }
-
-            // console.log("folderTreeData", this.folderTreeData);
-            const currentNodeTemp = foundChild(d3.hierarchy(this.folderTreeData), this.currentNode.data.name)
-            // const children = this.currentNode.children || this.currentNode._children || [];
-            // console.log("currentNodeTemp", currentNodeTemp);
-            if ( this.currentNode._children ) {
-                console.log("ls show childs");
-                this.currentNode.children = this.currentNode._children;
-                this.currentNode._children = null;
-            }
-
             if( params.some((p) => /-[^ ]*a[^ ]*/.test(p)) ){
                 this.ls.showHidden = true;
+            }
+            else{
+                this.ls.showHidden = false;
+            }
+
+            // const currentNodeTemp = foundChild(d3.hierarchy(this.folderTreeData), this.currentNode.data.name)
+            const currentNodeTemp = this.currentNode;
+
+            console.log("currentNodeTemp", currentNodeTemp, this.currentNode)
+            
+            if ( this.currentNode._children ) {
+                this.currentNode.children = !this.ls.showHidden ? this.currentNode?._children.filter((child) => !child.data.hidden) : this.currentNode?._children;
+                // this.currentNode._children = null;
+            }
+
+            if (currentNodeTemp && !this.hasPermission(currentNodeTemp, 'r')) {
+                this.output = "Permissions non accordées pour lire ce dossier.";
+                return;
             }
 
             if( currentNodeTemp && params.some((p) => /-[^ ]*l[^ ]*/.test(p)) && currentNodeTemp.children ){        
@@ -1244,7 +1417,7 @@
             else if(currentNodeTemp && params.length == 0 && currentNodeTemp.children ){
                 this.output = currentNodeTemp.children.filter((child) => !child.data.hidden).map((child) => child.data.name).join('\n');
             }
-            
+
             this.updateTree(this.currentNode);
         },
         makeDirectory(params) {
@@ -1262,8 +1435,10 @@
             let state = "valid"
             for (let index = 0; index < dirNames.length; index++) {
                 const dirName = dirNames[index];
+
                 
                 const targetNode = this.findNodeInTree(d3.hierarchy(this.folderTreeData), this.currentNode.data.name, this.currentNode.depth);
+
                 let added = false;
                 if (targetNode) {
                     if (!targetNode.children) {
@@ -1273,15 +1448,22 @@
                     if( targetNode.data.children.every(item => item.name !== dirName) ){
                         const now = new Date();
 
+
                         const month = String(now.getMonth() + 1).padStart(2, '0');
+
                         const day = String(now.getDate()).padStart(2, '0');
 
+
                         const hours = String(now.getHours()).padStart(2, '0');
+
                         const minutes = String(now.getMinutes()).padStart(2, '0');
+
 
                         const formattedDate = `${String(now.getFullYear()).slice(2).padStart(2, '0')}-${month}-${day} ${hours}:${minutes}`;
 
+
                         const rep = {
+
                             name: dirName,
                             type: "d",
                             rights: "drwxr-xr-x",
@@ -1325,9 +1507,11 @@
             }
             
             const targetNode = this.findNodeInTree(d3.hierarchy(this.folderTreeData), this.currentNode.data.name, this.currentNode.depth);
+
             let filesNames = "";
             for (let index = 0; index < params.length; index++) {
                 const fileName = params[index];
+
                 if(index==0)
                     filesNames += params[index];
                 else
@@ -1340,15 +1524,22 @@
 
                     const now = new Date();
 
+
                     const month = String(now.getMonth() + 1).padStart(2, '0');
+
                     const day = String(now.getDate()).padStart(2, '0');
 
+
                     const hours = String(now.getHours()).padStart(2, '0');
+
                     const minutes = String(now.getMinutes()).padStart(2, '0');
+
 
                     const formattedDate = `${String(now.getFullYear()).slice(2).padStart(2, '0')}-${month}-${day} ${hours}:${minutes}`;
 
+
                     const file = {
+
                         name: fileName, 
                         type: "f",
                         rights: "-rwxr-xr-x",
@@ -1368,10 +1559,7 @@
 
             let pwd = this.getPath(targetNode)
             this.pwd = pwd.replace("root", "")
-            // this.root = d3.hierarchy(this.folderTreeNoHidden);
-            // this.currentNode = this.root;
             this.createTree();
-            // this.updateTree(this.root)
             this.output = `Fichier créé : ${filesNames}`;
         },
         removeItem(params) {
@@ -1383,6 +1571,7 @@
             function remove(tree, child){
                 if(tree?.name == child.parent.data.name && tree?.date == child.parent?.data.date){
                     const index = tree.children.findIndex((_child) => _child.name === child.data.name);
+
                     tree.children.splice(index, 1);
                     return;
                 }
@@ -1390,6 +1579,7 @@
                     if(tree?.children){
                         for (let index = 0; index < tree?.children.length; index++) {
                             const element = tree.children[index];
+
                             remove(element, child)
                         }
                     }
@@ -1402,6 +1592,7 @@
             if( this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("w") && this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("x") ){
                 for (let index = 0; index < params.length; index++) {
                     const element = params[index]; 
+
                     
                     if( ! element.includes("-") ){// not option
                         if( ! params.includes("-r") ){
@@ -1445,6 +1636,7 @@
             }
 
             const target = this.findNodeInTree(this.currentNode, itemName);
+
             if (!target) {
                 this.output = `Erreur : Élément '${itemName}' introuvable`;
                 return "warning";
@@ -1462,6 +1654,7 @@
                 target.rights = target.data.rights;
 
                 const name = target.data.name
+
                 delete target.data;
                 delete target.parent;
                 delete target.depth;
@@ -1482,6 +1675,7 @@
                 target.rights = target.data.rights;
 
                 const name = target.data.name
+
                 delete target.data;
                 delete target.parent;
                 delete target.depth;
@@ -1508,16 +1702,19 @@
         },
         convertNumericPermissions(numeric) {
             const permissionMap = ['---', '--x', '-w-', '-wx', 'r--', 'r-x', 'rw-', 'rwx'];
+
             return `d${permissionMap[numeric[0]]}${permissionMap[numeric[1]]}${permissionMap[numeric[2]]}`;
         },
         applySymbolicPermissions(currentRights, symbolic) {
             let [owner, group, other] = currentRights.slice(1).match(/.{3}/g); // Obtenir les permissions
 
             // decomposition de la commande
-            const [entities, operation, modes] = symbolic.match(/^([ugoa]+)([+-=])([rwx]+)$/).slice(1);
+            const [entities, operation, modes] = symbolic.match(/^([ugoa]+)([+-=][rwx]+)$/).slice(1);
+
 
             // appliquer la modification aux entités concernées
             for (const entity of entities) {
+
                 switch (entity) {
                     case 'u': owner = this.updateRights(owner, operation, modes); break;
                     case 'g': group = this.updateRights(group, operation, modes); break;
@@ -1536,6 +1733,7 @@
             let updated = current;
             
             for (const mode of modes) {
+
                 let position = "rwx".indexOf(mode)
                 switch (operation) {
                     case '+':
@@ -1555,6 +1753,17 @@
             // updated = updated.split('').sort().join('').padEnd(3, '-');
 
             return updated;
+        },
+        hasPermission(node, permission) {
+            const permissions = {
+
+                'r': 4,
+                'w': 2,
+                'x': 1
+            };
+            const userPermissions = node.data.rights.slice(1, 4).split('').map(char => permissions[char] || 0).reduce((a, b) => a + b, 0);
+
+            return userPermissions & permissions[permission];
         }
 
     },
@@ -1602,6 +1811,7 @@
                         font-family: 'Roboto Mono', monospace;
                         display: table-caption;
                         width: 100%;
+                        display: block;
                     }
                 }
             }

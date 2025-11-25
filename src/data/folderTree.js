@@ -22,7 +22,44 @@ export const folderTree = {
           group: "user",
           date: "24-11-23 13:50",
           children: [
-            { name: 'documents', type: "d", rights: "drwxr-xr-x", user: "user", group: "user", date: "24-11-20 10:30", children: [] },
+            { 
+              name: 'documents', 
+              type: "d", 
+              rights: "drwxr-xr-x", 
+              user: "user", 
+              group: "user", 
+              date: "24-11-20 10:30", 
+              children: [
+                {
+                  name: 'archives',
+                  type: "d",
+                  rights: "drwxr-xr-x",
+                  user: "user",
+                  group: "user",
+                  date: "24-11-15 09:00",
+                  children: [
+                    {
+                      name: 'old_report.txt',
+                      type: "f",
+                      rights: "-rw-r--r--",
+                      user: "user",
+                      group: "user",
+                      date: "24-11-10 16:40",
+                      children: null,
+                    },
+                  ],
+                },
+                {
+                  name: 'todo.txt',
+                  type: "f",
+                  rights: "-rw-r--r--",
+                  user: "user",
+                  group: "user",
+                  date: "24-11-20 10:31",
+                  children: null,
+                },
+              ]
+            },
             { name: 'pictures', type: "d", rights: "drwxr-xr-x", user: "user", group: "user", date: "24-11-21 11:45", children: [] },
             { name: '.ssh', type: "d", rights: "drwxr-xr-x", hidden: true, user: "user", group: "user", date: "24-11-21 11:45", children: [] },
           ],

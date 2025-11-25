@@ -1,5 +1,46 @@
 <template>
     <v-container>
+        <v-dialog
+            v-model="tutorial.showIntro"
+            max-width="520"
+        >
+            <v-card>
+                <v-card-title class="text-h6">
+                    Briefing de mission
+                </v-card-title>
+                <v-card-text>
+                    <p>
+                        Bienvenue jeune padawan du terminal ! L'ordinateur d'entraînement simulateur Linux a besoin de toi.
+                    </p>
+                    <p>
+                        Objectif : repérer ta position, explorer les dossiers, nettoyer un vieux répertoire <strong>archives</strong> et préparer un nouveau dossier <strong>mission</strong> avec son fichier <strong>briefing.txt</strong>.
+                    </p>
+                    <p>
+                        Tu peux suivre le tutoriel guidé ou tout passer et jouer en autonomie.
+                    </p>
+                </v-card-text>
+                <v-card-actions class="justify-end">
+                    <v-btn variant="text" color="secondary" @click="skipTutorial">
+                        Passer
+                    </v-btn>
+                    <v-btn color="primary" @click="beginTutorial">
+                        Lancer le tutoriel
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <div class="badges-actions">
+            <v-btn
+                class="badge-toggle-btn"
+                variant="tonal"
+                color="secondary"
+                size="small"
+                @click="showBadgePanel = !showBadgePanel"
+            >
+                {{ showBadgePanel ? 'Masquer' : 'Afficher' }} les badges ({{ earnedBadgesCount }}/{{ badges.length }})
+            </v-btn>
+        </div>
         <!-- Main container for command input and tree visualization -->
         <div class="cont-cmd-graph-navigaion" style="display: flex;">
             <!-- Command input section -->
@@ -15,10 +56,121 @@
                     variant="solo"
                     label="Entrez une commande (help, cd, ls, mkdir, touch, chmod...)"
                     @keyup.enter="executeCommand()"
-                    @keyup="naveTerminal($event)"
+                    @keyup="navigateTerminal($event)"
                     @keydown.tab.prevent="autoCompleteCommand"
                     placeholder="Par exemple : cd documents"
                 ></v-text-field>
+
+                <v-slide-y-transition>
+                    <v-card
+                        v-if="tutorial.active && !tutorial.showIntro && !tutorial.completed"
+                        class="tutorial-card"
+                        variant="text"
+                    >
+                        <v-card-title class="text-subtitle-1">
+                            {{ currentTutorialStep ? currentTutorialStep.title : '' }}
+                        </v-card-title>
+
+                        <v-card-text>
+                            <div class="tutorial-description" v-html="currentTutorialStep ? currentTutorialStep.description : ''"></div>
+                            <div
+                                v-if="tutorial.feedback"
+                                class="tutorial-feedback"
+                            >
+                                {{ tutorial.feedback }}
+                            </div>
+                        </v-card-text>
+
+                        <v-card-actions class="justify-space-between info-step-tutorial">
+                            <v-btn variant="text" size="small" @click="skipTutorial">
+                                Passer le tutoriel
+                            </v-btn>
+                            <div class="text-caption">
+                                Étape {{ tutorial.currentStep + 1 }} / {{ tutorial.steps.length }}
+                            </div>
+                        </v-card-actions>
+                    </v-card>
+                </v-slide-y-transition>
+
+                <v-divider color="success"></v-divider>
+
+                <v-snackbar
+                    v-model="tutorial.showSuccess"
+                    timeout="4000"
+                    location="top"
+                    color="success"
+                >
+                    Mission accomplie ! Tu peux continuer à t'entraîner librement.
+                </v-snackbar>
+
+                <v-navigation-drawer
+                    class="badge-panel"
+                    location="right"
+                    temporary
+                    width="280"
+                    v-model="showBadgePanel"
+                >
+                    <v-toolbar
+                        flat
+                        color="transparent"
+                        density="compact"
+                    >
+                        <v-toolbar-title>Badges</v-toolbar-title>
+                        <v-spacer></v-spacer>
+                        <v-btn icon variant="text" @click="showBadgePanel = false">
+                            <v-icon>mdi-close</v-icon>
+                        </v-btn>
+                    </v-toolbar>
+                    <v-divider></v-divider>
+                    <v-card
+                        variant="flat"
+                        color="transparent"
+                    >
+                        <v-card-text>
+                            <v-row dense>
+                                <v-col
+                                    v-for="badge in badges"
+                                    :key="badge.id"
+                                    cols="6"
+                                >
+                                    <v-tooltip :text="badge.description" location="bottom">
+                                        <template v-slot:activator="{ props }">
+                                            <v-card
+                                                v-bind="props"
+                                                class="badge-item"
+                                                :elevation="badge.earned ? 6 : 1"
+                                                :color="badge.earned ? 'amber-darken-3' : 'grey-darken-3'"
+                                            >
+                                                <v-card-text class="text-center">
+                                                    <v-icon size="28">
+                                                        {{ badge.icon }}
+                                                    </v-icon>
+                                                    <div class="text-caption" style="margin-top: 6px;">
+                                                        {{ badge.title }}
+                                                    </div>
+                                                </v-card-text>
+                                            </v-card>
+                                        </template>
+                                    </v-tooltip>
+                                </v-col>
+                            </v-row>
+                        </v-card-text>
+                    </v-card>
+                </v-navigation-drawer>
+
+                <v-snackbar
+                    v-model="badgeSnackbar.show"
+                    timeout="4000"
+                    color="amber-darken-2"
+                    location="bottom"
+                >
+                    <div class="badge-snackbar-content">
+                        <v-icon size="18" class="mr-2" v-if="badgeSnackbar.icon">
+                            {{ badgeSnackbar.icon }}
+                        </v-icon>
+                        <span>{{ badgeSnackbar.message }}</span>
+                    </div>
+                </v-snackbar>
 
                 <!-- Command output section -->
                 <v-list 
@@ -26,6 +178,7 @@
                     ref="outputCmd"
                     base-color="white"
                     bg-color="#333"
+                    :height="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 205 : ''"
                 >
                     <v-list-item
                         v-for="(cmd, index) in commandHistory" 
@@ -334,7 +487,12 @@
   export default {
     name: 'FolderTree',
     computed: {
-
+        currentTutorialStep() {
+            return this.tutorial.steps[this.tutorial.currentStep] || null;
+        },
+        earnedBadgesCount() {
+            return this.badges.filter((badge) => badge.earned).length;
+        },
     },
     data() {
         return {
@@ -363,14 +521,91 @@
                     other: [],
                 }
             },
+            currentUser: 'user',
+            currentGroups: ['user'],
+            tutorial: {
+                showIntro: true,
+                active: true,
+                completed: false,
+                showSuccess: false,
+                currentStep: 0,
+                feedback: '',
+                steps: [
+                    {
+                        id: 'pwd',
+                        title: '1. Repérer ta position',
+                        description: 'Tape <code>pwd</code> pour afficher le chemin comme <strong>root &gt; home &gt; user</strong>.',
+                        success: 'Tu sais maintenant où tu te trouves.'
+                    },
+                    {
+                        id: 'ls',
+                        title: '2. Observer les environs',
+                        description: 'Exécute <code>ls</code> (optionnellement avec <code>-l</code>) pour voir les dossiers disponibles.',
+                        success: 'Cartographie du secteur réalisée.'
+                    },
+                    {
+                        id: 'cd-documents',
+                        title: '3. Atteindre le dossier documents',
+                        description: 'Utilise <code>cd documents</code> (ou le chemin absolu) pour rejoindre le dossier <strong>documents</strong>.',
+                        success: 'Bienvenue dans les documents.'
+                    },
+                    {
+                        id: 'rm-archives',
+                        title: '4. Nettoyer les archives',
+                        description: 'Supprime l’ancien dossier <code>archives</code> avec <code>rm -r archives</code>.',
+                        success: 'Archives nettoyées avec succès.'
+                    },
+                    {
+                        id: 'mkdir-mission',
+                        title: '5. Préparer la mission',
+                        description: 'Crée un nouveau dossier <code>mission</code> (ex: <code>mkdir mission</code>) dans <strong>documents</strong>.',
+                        success: 'Dossier mission créé.'
+                    },
+                    {
+                        id: 'cd-mission',
+                        title: '6. Entrer dans mission',
+                        description: 'Déplace-toi dans le dossier <code>mission</code>.',
+                        success: 'Mission est maintenant ton dossier courant.'
+                    },
+                    {
+                        id: 'touch-briefing',
+                        title: '7. Créer le briefing',
+                        description: 'Crée un fichier <code>briefing.txt</code> (ex: <code>touch briefing.txt</code>) dans <strong>mission</strong>.',
+                        success: 'Briefing.txt est en place, mission accomplie !'
+                    },
+                ],
+            },
+            showBadgePanel: false,
+            badgeSnackbar: {
+                show: false,
+                message: '',
+                icon: '',
+            },
+            badges: [
+                { id: 'explorer', title: 'Explorateur', description: 'Visite 10 répertoires différents.', earned: false, icon: 'mdi-compass' },
+                { id: 'architecte', title: 'Architecte', description: 'Crée un dossier et un fichier.', earned: false, icon: 'mdi-home-analytics' },
+                { id: 'nettoyeur', title: 'Nettoyeur', description: 'Supprime un dossier avec rm -r.', earned: false, icon: 'mdi-delete-sweep' },
+                { id: 'sage', title: 'Sage du shell', description: 'Consulte 3 pages man.', earned: false, icon: 'mdi-book-open-variant' },
+                { id: 'mentor', title: 'Mentor', description: 'Termine le tutoriel d’entraînement.', earned: false, icon: 'mdi-school-outline' },
+            ],
+            stats: {
+                visitedPaths: [],
+                createdDirectory: false,
+                createdFile: false,
+                removedDirectory: false,
+                manUses: 0,
+                tutorialCompleted: false,
+            },
         };
     },
     mounted() {
         this.createTree();
         this.createOutputAnimate()
+        this.loadCommandHistory();
+        this.loadBadgeState();
     },
     methods: {
-        buidRightsInfos(){
+        buildRightsInfos(){
             // 
             const usersR = this.chmodInfos.rights.split("").slice(1, 4);
 
@@ -880,7 +1115,7 @@
                         return diagonal(o, o);
                     })
                     .attr('fill', 'none')
-                    .attr('stroke', (d) => _vue.isPathToCurrentNode(d.target) ? (!_vue.pwd || _vue.pwd == "" ? 'orange' : 'blue') : '#ccc')
+                    .attr('stroke', (d) => _vue.isPathToCurrentNode(d.target) ? (!_vue.pwd || _vue.pwd == "" ? '#986547' : '#5FADAD') : '#ccc')
                     .attr('stroke-width', (d) => _vue.isPathToCurrentNode(d.target) ? 17 : 2)
                     .attr('stroke-dasharray', (d) => _vue.isPathToCurrentNode(d.target) ? '6 9' : '0')
 
@@ -889,7 +1124,7 @@
                     .transition()
                     .duration(750)
                     .attr('d', (d) => diagonal(d.source, d.target))
-                    .attr('stroke', (d) => _vue.isPathToCurrentNode(d.target) ? (!_vue.pwd || _vue.pwd == "" ? 'orange' : 'blue') : '#ccc')
+                    .attr('stroke', (d) => _vue.isPathToCurrentNode(d.target) ? (!_vue.pwd || _vue.pwd == "" ? '#986547' : '#5FADAD') : '#ccc')
                     .attr('stroke-width', (d) => _vue.isPathToCurrentNode(d.target) ? 17 : 2)
                     .attr('stroke-dasharray', (d) => _vue.isPathToCurrentNode(d.target) ? '6 9' : '0')
                     .attr('class', (d) => _vue.isPathToCurrentNode(d.target) ? 'link fadein' : 'link')
@@ -935,6 +1170,47 @@
     
             update(this.root);
             this.updateTree = update; // Stocker la fonction `update` pour les mises à jour futures
+        },
+        /**
+         * Résout un chemin (absolu ou relatif) en renvoyant le nœud correspondant dans l'arborescence.
+         * @param {string} path - Le chemin à résoudre (par ex. "/home/user/docs" ou "docs/..").
+         * @returns {Object|null} Le nœud trouvé ou null si le chemin est invalide.
+         */
+        resolvePath(path) {
+            // Si le chemin commence par '/', c'est un chemin absolu : on part de la racine.
+            // Sinon, c'est un chemin relatif : on part du dossier courant.
+            let current = (path[0] === '/') ? this.root : this.currentNode;
+            // Découper le chemin en segments en supprimant les éventuels segments vides.
+            const segments = path.split('/').filter(seg => seg.length > 0);
+
+            for (let seg of segments) {
+                if (seg === ".") {
+                    // '.' signifie le répertoire courant, donc on ne change rien.
+                    continue;
+                } 
+                else if (seg === "..") {
+                    // '..' signifie le répertoire parent (s'il existe)
+                    if (current.parent) {
+                        current = current.parent;
+                    } 
+                    else {
+                        // On ne peut pas monter au-dessus de la racine.
+                        return null;
+                    }
+                } 
+                else {
+                    // Rechercher parmi les enfants visibles et/ou cachés (selon votre logique)
+                    let found = null;
+                    const children = current.children || current._children || [];
+                    found = children.find(child => child.data.name === seg && child.data.type === 'd');
+                    if (!found) {
+                        // Si le dossier n'est pas trouvé, le chemin est invalide
+                        return null;
+                    }
+                    current = found;
+                }
+            }
+            return current;
         },
         isPathToCurrentNode(node) {
             let currentNode = this.currentNode;
@@ -998,7 +1274,7 @@
 
             return null;
         },
-        naveTerminal(event){
+        navigateTerminal(event){
             switch (event.key) {
                 case "ArrowUp":
                 
@@ -1038,10 +1314,9 @@
         autoCompleteCommand() {
             const args = this.command.trim().split(' ');
             const cmd = args[0];
-            const param = args.slice(-1).join(' ');
 
             if ( args.length === 1 ) {// Autocomplétion de la commande
-                const commands = ['help', 'pwd', 'echo', 'cd', 'ls', 'mkdir', 'touch', 'rm', 'chmod'];
+                const commands = ['help', 'man', 'pwd', 'echo', 'cd', 'ls', 'mkdir', 'touch', 'rm', 'chmod'];
 
                 const matches = commands.filter(c => c.startsWith(cmd));
 
@@ -1063,46 +1338,51 @@
                 }
             } 
             else {// Autocomplétion des paramètres
-                // console.log("args", args);
-                const currentNode = this.currentNode;
-
-                let children = currentNode.children || currentNode._children || [];
-                let matches = [];
-                let pathParts = [];
-                if (param.startsWith('/')) {
-                    // console.log("param", param);
-                    pathParts = param.split('/');
-                    let node = this.root;
-                    for (let i = 1; i < pathParts.length - 1; i++) {
-                        node = node.children?.find(child => child.data.name === pathParts[i]) || node._children?.find(child => child.data.name === pathParts[i]);
-                        if (!node) break;
-                    }
-
-                    if (node) {
-                        children = node.children || node._children || [];
-                        matches = children.filter(child => child.data.name.startsWith(pathParts[pathParts.length - 1])).map(child => child.data.name);
-                    }
-                } 
-                else {
-                    // console.log("param", param);
-                    const lastParam = args[args.length - 1];
-
-                    matches = children.filter(child => child.data.name.startsWith(lastParam)).map(child => child.data.name);
+                const lastParam = args[args.length - 1];
+                if (!lastParam || lastParam.startsWith('-')) {
+                    return;
                 }
 
-                console.log(pathParts, matches, pathParts.slice(1, -1).join('/'));
-                
+                const context = this.getAutocompleteContext(lastParam);
+                if (!context) {
+                    return;
+                }
 
-                if ( matches.length === 1 ) {
-                    const newParams = args.slice(1, -1).concat(matches[0]).join(' ');
-                    
-                    // regex qui identifie et récupérer les paramètres de la commande donc qui contient un '-' et un espace'
-                    const _matches = newParams.match(/(-\w+)(\s+|$)/g);
-                    
-                    this.command = `${cmd} ${_matches ? _matches.join(' ') : ''}${param.startsWith('/') ? (pathParts?.length > 2 ? '/' : '') + pathParts.slice(1, -1).join('/') + '/' : ''}${matches[0]}`;
+                let baseNodeResult = null;
+                if (!context.dirPath) {
+                    baseNodeResult = { node: this.currentNode };
+                } 
+                else if (context.dirPath === '/') {
+                    baseNodeResult = { node: this.root };
+                } 
+                else {
+                    baseNodeResult = this.getNodeFromPath(context.dirPath, { includeFiles: false });
+                }
+
+                const baseNode = baseNodeResult?.node;
+                if (!baseNode) {
+                    return;
+                }
+
+                const availableChildren = baseNode.children || baseNode._children || [];
+                const matches = availableChildren.filter(child => child.data.name.startsWith(context.partial));
+
+                if (matches.length === 1) {
+                    const matchNode = matches[0];
+                    let completion = `${context.basePrefix}${matchNode.data.name}`;
+                    if (matchNode.data.type === 'd') {
+                        completion += '/';
+                    } 
+                    else {
+                        completion += ' ';
+                    }
+
+                    const newArgs = args.slice(0, -1).concat(completion);
+                    this.command = newArgs.join(' ');
                 } 
                 else if (matches.length > 1) {
-                    this.output = `Suggestions: ${matches.join(', ')}`;
+                    const suggestions = matches.map(match => match.data.name);
+                    this.output = `Suggestions: ${suggestions.join(', ')}`;
                     
                     this.commandHistory.push({ 
                         command: "", 
@@ -1115,6 +1395,175 @@
                     }, 50)
                 }
             }
+        },
+        beginTutorial() {
+            this.tutorial.showIntro = false;
+            this.tutorial.active = true;
+            this.tutorial.completed = false;
+            this.tutorial.showSuccess = false;
+            this.tutorial.currentStep = 0;
+            this.tutorial.feedback = '';
+        },
+        skipTutorial() {
+            this.tutorial.showIntro = false;
+            this.tutorial.active = false;
+            this.tutorial.showSuccess = false;
+            this.tutorial.feedback = '';
+        },
+        finishTutorial() {
+            this.tutorial.completed = true;
+            this.tutorial.active = false;
+            this.tutorial.feedback = 'Mission accomplie, continue librement !';
+            this.tutorial.showSuccess = true;
+            this.stats.tutorialCompleted = true;
+            this.checkBadges();
+        },
+        handleTutorialProgress(cmd, params) {
+            if (!this.tutorial.active || this.tutorial.showIntro || this.tutorial.completed) {
+                return;
+            }
+
+            const step = this.tutorial.steps[this.tutorial.currentStep];
+            if (!step) {
+                return;
+            }
+
+            const normalizedCmd = (cmd || '').toLowerCase();
+            const currentNodePath = this.currentNode ? this.getPath(this.currentNode) : '';
+            const currentPath = currentNodePath ? (currentNodePath.replace('root', '') || '/') : '/';
+            const documentsNode = this.root ? this.getNodeFromPath('/home/user/documents') : null;
+            const archivesNode = this.root ? this.getNodeFromPath('/home/user/documents/archives') : null;
+            const missionNode = this.root ? this.getNodeFromPath('/home/user/documents/mission') : null;
+            const briefingNode = this.root ? this.getNodeFromPath('/home/user/documents/mission/briefing.txt') : null;
+            let success = false;
+
+            switch (step.id) {
+                case 'pwd':
+                    success = normalizedCmd === 'pwd';
+                    break;
+                case 'ls':
+                    success = normalizedCmd === 'ls';
+                    break;
+                case 'cd-documents':
+                    success = normalizedCmd === 'cd' && currentPath.endsWith('/home/user/documents');
+                    break;
+                case 'rm-archives':
+                    success = !archivesNode;
+                    break;
+                case 'mkdir-mission':
+                    success = !!missionNode;
+                    break;
+                case 'cd-mission':
+                    success = normalizedCmd === 'cd' && currentPath.endsWith('/home/user/documents/mission');
+                    break;
+                case 'touch-briefing':
+                    success = !!briefingNode;
+                    break;
+                default:
+                    success = false;
+            }
+
+            if (success) {
+                this.tutorial.feedback = step.success || 'Étape validée.';
+                this.tutorial.currentStep += 1;
+                if (this.tutorial.currentStep >= this.tutorial.steps.length) {
+                    this.finishTutorial();
+                }
+            }
+        },
+        hasChildNamed(node, name) {
+            if (!node) return false;
+            const children = node.children || node._children || [];
+            return children.some((child) => (child.data?.name || child.name) === name);
+        },
+        trackDirectoryVisit(path) {
+            const normalized = path ? (path.replace('root', '') || '/') : '/';
+            if (!this.stats.visitedPaths.includes(normalized)) {
+                this.stats.visitedPaths.push(normalized);
+                this.checkBadges();
+            }
+        },
+        awardBadge(id) {
+            const badge = this.badges.find((b) => b.id === id);
+            if (!badge || badge.earned) {
+                return;
+            }
+            badge.earned = true;
+            this.badgeSnackbar.message = `Badge débloqué : ${badge.title}`;
+            this.badgeSnackbar.icon = badge.icon;
+            this.badgeSnackbar.show = true;
+        },
+        checkBadges() {
+            if (this.stats.visitedPaths.length >= 10) {
+                this.awardBadge('explorer');
+            }
+            if (this.stats.createdDirectory && this.stats.createdFile) {
+                this.awardBadge('architecte');
+            }
+            if (this.stats.removedDirectory) {
+                this.awardBadge('nettoyeur');
+            }
+            if (this.stats.manUses >= 3) {
+                this.awardBadge('sage');
+            }
+            if (this.stats.tutorialCompleted) {
+                this.awardBadge('mentor');
+            }
+            this.persistBadges();
+        },
+        saveCommandHistory() {
+            const payload = {
+                history: this.commandHistory,
+                timestamp: Date.now(),
+            };
+            this.$store.commit('setCommandHistory', payload);
+        },
+        loadCommandHistory() {
+            const oneHour = 60 * 60 * 1000;
+            const storedTimestamp = this.$store.state.commandHistoryTimestamp;
+            const storedHistory = this.$store.state.commandHistory || [];
+            if (storedTimestamp && Date.now() - storedTimestamp <= oneHour) {
+                this.commandHistory = [...storedHistory];
+            } else {
+                this.commandHistory = [];
+                this.$store.commit('setCommandHistory', { history: [], timestamp: null });
+            }
+        },
+        loadBadgeState() {
+            const badgeState = this.$store.state.badgeState || {};
+            const earnedMap = badgeState.earned || {};
+            this.badges = this.badges.map((badge) => ({
+                ...badge,
+                earned: !!earnedMap[badge.id],
+            }));
+            const storedStats = badgeState.stats || {};
+            this.stats = {
+                visitedPaths: storedStats.visitedPaths ? [...storedStats.visitedPaths] : [],
+                createdDirectory: !!storedStats.createdDirectory,
+                createdFile: !!storedStats.createdFile,
+                removedDirectory: !!storedStats.removedDirectory,
+                manUses: storedStats.manUses || 0,
+                tutorialCompleted: !!storedStats.tutorialCompleted,
+            };
+        },
+        persistBadges() {
+            const earnedMap = {};
+            this.badges.forEach((badge) => {
+                if (badge.earned) {
+                    earnedMap[badge.id] = true;
+                }
+            });
+            this.$store.commit('setBadgeState', {
+                earned: earnedMap,
+                stats: {
+                    visitedPaths: [...this.stats.visitedPaths],
+                    createdDirectory: this.stats.createdDirectory,
+                    createdFile: this.stats.createdFile,
+                    removedDirectory: this.stats.removedDirectory,
+                    manUses: this.stats.manUses,
+                    tutorialCompleted: this.stats.tutorialCompleted,
+                },
+            });
         },
         executeCommand() {
             this.cursorHistory = 0;
@@ -1151,8 +1600,15 @@
                 case 'help':
                     this.output = this.getHelp();
                     break;
+                case 'man':
+                    state = this.manCommand(param[0]);
+                    if (state === 'valid') {
+                        this.stats.manUses += 1;
+                        this.checkBadges();
+                    }
+                    break;
                 case 'chmod':
-                    state = this.chmodItem(param[1], param[0]);
+                    state = this.handleChmod(param);
                     break
                 case 'pwd':
                     this.pathWayDirectory();
@@ -1184,11 +1640,14 @@
                     state = 'error';
             }
 
+            this.handleTutorialProgress(cmd, param);
+
             this.commandHistory.push({ 
                     command: this.command, 
                     state,
                     output: state != 'error' ? this.output : `<span style="color: #fe4444">${this.output}<span/>`
                 });
+            this.saveCommandHistory();
             
             setTimeout(()=>{
                 $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
@@ -1200,6 +1659,7 @@
             const helpMessages = {
                 '': `
                     Commandes disponibles :
+                    - man : Affiche l'aide détaillée d'une commande
                     - help : Affiche ce message d'aide
                     - pwd : Affiche le chemin du répertoire courant
                     - echo : Affiche un message
@@ -1217,14 +1677,194 @@
                 'mkdir': 'Usage: mkdir [-h] [dossier]\nCrée un nouveau dossier.',
                 'touch': 'Usage: touch [-h] [fichier]\nCrée un nouveau fichier.',
                 'rm': 'Usage: rm [-h] [-r] [fichier|dossier]\nSupprime un fichier ou un dossier.',
-                'chmod': 'Usage: chmod [-h] [permissions] [fichier|dossier]\nChange les permissions d\'un fichier ou d\'un dossier.'
+                'chmod': 'Usage: chmod [-h] [permissions] [fichier|dossier]\nChange les permissions d\'un fichier ou d\'un dossier.',
+                'man': 'Usage: man [commande]\nAffiche la documentation détaillée d\'une commande disponible dans cet environnement.'
             };
             return helpMessages[cmd] || `Commande inconnue : ${cmd}`;
+        },
+        manCommand(topic = '') {
+            if (!topic) {
+                this.output = 'Usage: man <commande>';
+                return 'warning';
+            }
+
+            const manual = this.getManual(topic);
+            if (!manual) {
+                this.output = `Aucune page de manuel pour '${topic}'.`;
+                return 'warning';
+            }
+
+            this.output = manual;
+            return 'valid';
+        },
+        getManual(topic) {
+            const manuals = {
+                man: `
+MAN(1)                             Commandes Shell                             MAN(1)
+
+NOM
+    man - affiche l'aide détaillée disponible dans ce simulateur.
+
+SYNOPSIS
+    man <commande>
+
+DESCRIPTION
+    Affiche une description, la syntaxe et les options implémentées ici pour la commande cible.
+
+OPTIONS
+    (aucune complémentaire)
+
+REMARQUE
+    Seules les commandes simulées disposent d'une page de manuel.
+`,
+                help: `
+HELP(1)                            Commandes Shell                            HELP(1)
+
+NOM
+    help - liste l'ensemble des commandes supportées.
+
+SYNOPSIS
+    help [commande]
+
+DESCRIPTION
+    Sans argument, affiche toutes les commandes disponibles. Avec une commande,
+    renvoie un bref rappel d'usage. Pour plus de détails, utilisez 'man <commande>'.
+`,
+                pwd: `
+PWD(1)                             Commandes Shell                             PWD(1)
+
+NOM
+    pwd - imprime le chemin absolu du répertoire courant.
+
+SYNOPSIS
+    pwd
+
+OPTIONS
+    (aucune)
+
+REMARQUES
+    Le chemin est calculé à partir de la racine simulée 'root'.
+`,
+                echo: `
+ECHO(1)                            Commandes Shell                            ECHO(1)
+
+NOM
+    echo - affiche une ligne de texte.
+
+SYNOPSIS
+    echo <texte>
+
+DESCRIPTION
+    Renvoie exactement les arguments fournis.
+`,
+                cd: `
+CD(1)                              Commandes Shell                              CD(1)
+
+NOM
+    cd - change le répertoire courant.
+
+SYNOPSIS
+    cd [chemin]
+
+OPTIONS
+    .   répertoire courant
+    ..  répertoire parent
+    /   chemins absolus à partir de root
+
+REMARQUES
+    Nécessite l'exécution (x) sur chaque dossier traversé.
+`,
+                ls: `
+LS(1)                              Commandes Shell                              LS(1)
+
+NOM
+    ls - liste le contenu d'un dossier.
+
+SYNOPSIS
+    ls [-a] [-l] [chemin]
+
+OPTIONS
+    -a  inclut les fichiers cachés
+    -l  vue détaillée (droits, propriétaire, date)
+
+REMARQUES
+    Le chemin peut être relatif ou absolu. Requiert les droits r+x sur la cible.
+`,
+                mkdir: `
+MKDIR(1)                           Commandes Shell                           MKDIR(1)
+
+NOM
+    mkdir - crée un ou plusieurs dossiers.
+
+SYNOPSIS
+    mkdir [-p] dossier...
+
+OPTIONS
+    -p  crée les dossiers parents manquants sans erreur si existants
+
+REMARQUES
+    Vérifie les droits w+x sur chaque dossier parent modifié.
+`,
+                touch: `
+TOUCH(1)                           Commandes Shell                           TOUCH(1)
+
+NOM
+    touch - crée un fichier vide ou met à jour sa date.
+
+SYNOPSIS
+    touch fichier...
+
+OPTIONS
+    (implémentation simplifiée : -a/-m acceptés mais effectuent la même mise à jour de date)
+
+REMARQUES
+    Crée les fichiers inexistants dans le répertoire cible si les droits w+x sont présents.
+`,
+                rm: `
+RM(1)                              Commandes Shell                              RM(1)
+
+NOM
+    rm - supprime fichiers ou dossiers.
+
+SYNOPSIS
+    rm [-r] [-f] [-i] motif...
+
+OPTIONS
+    -r  supprime récursivement les dossiers
+    -f  ignore les erreurs et confirmations
+    -i  demande confirmation pour chaque élément (désactivé si -f)
+
+REMARQUES
+    Les motifs utilisent '*' pour la correspondance générique. Requiert w+x sur le dossier parent.
+`,
+                chmod: `
+CHMOD(1)                           Commandes Shell                           CHMOD(1)
+
+NOM
+    chmod - modifie les permissions d'un fichier ou dossier.
+
+SYNOPSIS
+    chmod [-R] mode cible...
+
+MODES
+    Numérique : 755, 644...
+    Symbolique : u+r, g-w, a=rw, u+rwx,g+rx,o-r...
+    Plusieurs segments séparés par des virgules sont pris en charge.
+
+OPTIONS
+    -R  applique la modification récursivement aux sous-dossiers/fichiers.
+
+REMARQUES
+    Seul le propriétaire peut modifier les permissions dans cette simulation.
+`
+            };
+
+            return manuals[topic];
         },
         echo(params){
             this.output = params.join(" ")
         },
-        pathWayDirectory(){
+        pathWayDirectory(){//pwd
             this.output = this.getPath(this.currentNode).replace("root", "");
             
             if(this.output=="")
@@ -1233,7 +1873,7 @@
             this.pwd = this.output;
             this.updateTree(this.currentNode);
         },
-        changeDirectory(params) {
+        changeDirectory(params) {//cd
             let _dirName = ""
             if(typeof params == "object")//params
                 _dirName = params[0];
@@ -1310,7 +1950,14 @@
                     const dirName = _dirNames[index];
 
                     if(dirName != ""){
+                        if (dirName === '.') {
+                            continue;
+                        }
                         if (dirName === '..' && this.currentNode && this.currentNode != this.root) {
+                            if (!this.hasPermission(this.currentNode.parent, 'x')) {
+                                this.output = `Permissions non accordées pour accéder au dossier parent '${this.currentNode.parent.data.name}'.`;
+                                return 'warning';
+                            }
                             if (this.currentNode.parent.children) {
                                 this.currentNode.parent.children.forEach((child) => {
                                     if (child.children) {
@@ -1328,6 +1975,10 @@
 
                             
                             if (found) {
+                                if (!this.hasPermission(found, 'x')) {
+                                    this.output = `Permissions non accordées pour accéder au dossier '${found.data.name}'.`;
+                                    return 'warning';
+                                }
                                 if (this.currentNode._children && !this.currentNode.children) {
                                     this.currentNode.children = this.currentNode._children;
                                     // this.currentNode._children = null;
@@ -1356,223 +2007,339 @@
             this.output = `Dossier actuel : ${this.currentNode.data.name}`;
             this.createOutputAnimate()
             this.updateTree(this.currentNode);
+            this.trackDirectoryVisit(this.getPath(this.currentNode));
             return 'valid'
         },
-        listDirectory(params) {
-            // const _vue = this;
-            function foundChild(dic, name){
-                if(dic?.data.name == name){
-                    return dic
+        findChildGlobal(root, node) {
+            const name = node?.data?.name ? node.data.name : node.name;
+            const depth = node?.depth || 0;
+
+            if (root?.data?.name === name && root.depth == depth) {
+                return root;
+            }
+
+            const children = root?.children || root?._children || [];
+            for (let child of children) {
+                if (child.data.name === name && child.depth == depth) {
+                    return child;
                 }
-                else{
-                    for (let index = 0; index < dic?.children?.length; index++) {
-                        let element = dic.children[index];
 
-                        if(element?.data.name == name){
-                            return element
-                        }
+                const found = this.findChildGlobal(child, node);
+                if (found) return found;
+            }
 
-                        const _tmp = foundChild(element, name)
+            return null;
+        },
+        findChild(node, name) {
+            if (node?.data?.name === name) {
+                return node;
+            }
 
-
-                        if(_tmp)
-                            return _tmp
-                    }
+            const children = node?.children || node?._children || [];
+            for (let child of children) {
+                if (child.data.name === name) {
+                    return child;
                 }
-                return null;
+
+                const found = findChild(child, name);
+                if (found) return found;
             }
 
-            if( params.some((p) => /-[^ ]*a[^ ]*/.test(p)) ){
-                this.ls.showHidden = true;
-            }
-            else{
-                this.ls.showHidden = false;
+            return null;
+        },
+        listDirectory(params) {//ls
+            const args = Array.isArray(params) ? params : (params ? [params] : []);
+            // Vérifie les options `-a` et `-l` dans les paramètres
+            const showHidden = args.some((p) => /-[^ ]*a[^ ]*/.test(p));
+            const detailedView = args.some((p) => /-[^ ]*l[^ ]*/.test(p));
+
+            // Met à jour les options de la commande `ls` pour la partie graphique
+            this.ls.showHidden = showHidden;
+
+            // Récupère le chemin sans options
+            const nonOptionParams = args.filter((p) => !/-[^ ]*/.test(p));
+            const dirPath = nonOptionParams[0] || "";
+
+            // Résout le chemin (si le chemin est vide, on utilise le dossier courant)
+            const targetNode = dirPath ? this.resolvePath(dirPath) : this.currentNode;
+
+            if (!targetNode) {
+                this.output = `Erreur : Répertoire '${dirPath}' introuvable.`;
+                return;
             }
 
-            // const currentNodeTemp = foundChild(d3.hierarchy(this.folderTreeData), this.currentNode.data.name)
-            const currentNodeTemp = this.currentNode;
+            // Détecte si on liste un dossier parent (dans ce cas on ne touche pas au Tree)
+            const isParentListing =
+                !!dirPath &&
+                targetNode !== this.currentNode &&
+                this.isPathToCurrentNode(targetNode);
 
-            console.log("currentNodeTemp", currentNodeTemp, this.currentNode)
-            
-            if ( this.currentNode._children ) {
-                this.currentNode.children = !this.ls.showHidden ? this.currentNode?._children.filter((child) => !child.data.hidden) : this.currentNode?._children;
-                // this.currentNode._children = null;
-            }
-
-            if (currentNodeTemp && !this.hasPermission(currentNodeTemp, 'r')) {
+            // Vérifie les permissions de lecture
+            if (!this.hasPermission(targetNode, ['r', 'x'])) {
                 this.output = "Permissions non accordées pour lire ce dossier.";
                 return;
             }
 
-            if( currentNodeTemp && params.some((p) => /-[^ ]*l[^ ]*/.test(p)) && currentNodeTemp.children ){        
-                this.output = currentNodeTemp.children.filter((child) => !child.data?.hidden || params.some((p) => /-[^ ]*a[^ ]*/.test(p))).map((child) => {
-                        return `${child.data.rights}  ${child.data.user}  ${child.data.group}  ${child.data.date}  ${child.data.name}`.replaceAll(" ", "&nbsp;")
-                    }).join('\n');
-            }
-            else if( currentNodeTemp && params.includes("-a") && currentNodeTemp.children ){
-                this.output = currentNodeTemp.children.map((child) => {
-                        return child.data.name
-                    }).join('\n');
-            }
-            else if(currentNodeTemp && params.length == 0 && currentNodeTemp.children ){
-                this.output = currentNodeTemp.children.filter((child) => !child.data.hidden).map((child) => child.data.name).join('\n');
+            // Prépare les enfants à afficher
+            let nodeChildren;
+            if (isParentListing) {
+                nodeChildren = targetNode.children || targetNode._children || [];
+            } 
+            else {
+                targetNode.children = targetNode._children || targetNode.children || [];
+                nodeChildren = targetNode.children;
             }
 
-            this.updateTree(this.currentNode);
+            // Filtre les fichiers cachés si `-a` n'est pas spécifié
+            const children = showHidden
+                ? nodeChildren
+                : nodeChildren.filter((child) => !child.data.hidden);
+
+            if (!isParentListing) {
+                targetNode.children = children;
+            }
+            
+            // Génère la sortie
+            if (children.length === 0) {
+                this.output = "Dossier vide";
+            } 
+            else if (detailedView) {
+                // Vue détaillée avec `-l`
+                this.output = children
+                    .map(
+                        (child) =>
+                            `${child.data.rights} ${child.data.user} ${child.data.group} ${child.data.date} ${child.data.name}`.replaceAll(" ", "&nbsp;")
+                    )
+                    .join("\n");
+            } 
+            else {
+                // Vue simple
+                this.output = children.map((child) => child.data.name).join("\n");
+            }
+
+            // console.log("-----", this.currentNode, targetNode);
+
+            // Met à jour l'arbre uniquement si l'on parcourt le répertoire courant ou un sous-dossier
+            if (!isParentListing) {
+                this.updateTree(this.currentNode);
+            }
         },
-        makeDirectory(params) {
+        makeDirectory(params) {//mkdir
             if (!params) {
                 this.output = 'Nom de dossier requis';
                 return;
             }
 
-            let dirNames = []
-            if(typeof params == "object")
-                dirNames = params
-            else
-                dirNames = [params]
+            const args = Array.isArray(params) ? params : [params];
+            const options = args.filter((arg) => arg.startsWith('-'));
+            const dirNames = args.filter((arg) => !arg.startsWith('-'));
 
-            let state = "valid"
-            for (let index = 0; index < dirNames.length; index++) {
-                const dirName = dirNames[index];
+            if (!dirNames.length) {
+                this.output = 'Aucun nom de dossier fourni';
+                return 'error';
+            }
 
-                
-                const targetNode = this.findNodeInTree(d3.hierarchy(this.folderTreeData), this.currentNode.data.name, this.currentNode.depth);
+            const allowParents = options.some((opt) => opt.includes('p'));
+            const createdDirs = [];
+            const errors = [];
 
-                let added = false;
-                if (targetNode) {
-                    if (!targetNode.children) {
-                        targetNode.children = [];
+            for (const rawPath of dirNames) {
+                if (!rawPath || rawPath === '.' || rawPath === '/') {
+                    errors.push(`mkdir: chemin invalide '${rawPath || ''}'`);
+                    continue;
+                }
+
+                const segments = rawPath.split('/');
+                let current = rawPath.startsWith('/') ? this.root : this.currentNode;
+                let failed = false;
+
+                for (let i = 0; i < segments.length; i++) {
+                    const segment = segments[i];
+                    if (!segment || segment === '.') {
+                        continue;
                     }
 
-                    if( targetNode.data.children.every(item => item.name !== dirName) ){
-                        const now = new Date();
+                    if (segment === '..') {
+                        if (current.parent) {
+                            current = current.parent;
+                        }
+                        continue;
+                    }
 
+                    const isLast = i === segments.length - 1;
+                    const existing = this.getChildNode(current, segment);
 
-                        const month = String(now.getMonth() + 1).padStart(2, '0');
-
-                        const day = String(now.getDate()).padStart(2, '0');
-
-
-                        const hours = String(now.getHours()).padStart(2, '0');
-
-                        const minutes = String(now.getMinutes()).padStart(2, '0');
-
-
-                        const formattedDate = `${String(now.getFullYear()).slice(2).padStart(2, '0')}-${month}-${day} ${hours}:${minutes}`;
-
-
-                        const rep = {
-
-                            name: dirName,
-                            type: "d",
-                            rights: "drwxr-xr-x",
-                            user: "user",
-                            group: "user",
-                            hidden: dirName[0] == '.' ? true : false,
-                            date: formattedDate,
-                            children: [], 
+                    if (existing) {
+                        if (existing.data.type !== 'd') {
+                            errors.push(`mkdir: impossible de créer le dossier '${rawPath}': Un fichier porte déjà ce nom`);
+                            failed = true;
+                            break;
                         }
 
-                        targetNode.children.push(rep);
-                        targetNode.data.children.push(rep);
+                        if (isLast && !allowParents) {
+                            errors.push(`mkdir: impossible de créer le dossier '${rawPath}': Le fichier existe`);
+                            failed = true;
+                            break;
+                        }
 
-                        added = true;
+                        current = existing;
+                        continue;
                     }
+
+                    if (!isLast && !allowParents) {
+                        errors.push(`mkdir: impossible de créer le dossier '${rawPath}': Chemin intermédiaire manquant`);
+                        failed = true;
+                        break;
+                    }
+
+                    if (!this.hasPermission(current, ['w', 'x'])) {
+                        this.output = `Permissions non accordées pour créer un dossier dans '${current.data.name}'.`;
+                        return 'warning';
+                    }
+
+                    current = this.createDirectoryNode(current, segment);
                 }
 
-                if(added){
-                    this.updateNode(this.currentNode, targetNode.data.name, null, targetNode)
-                    // console.log("mk", this.currentNode, this.folderTreeData);
-                    // this.folderTreeData = this.root.data;
-
-                    let pwd = this.getPath(targetNode)
-                    this.pwd = pwd.replace("root", "")
-
-                    this.createTree();
-                    this.output = `Dossier créé : ${dirName}`;
-                }
-                else{
-                    this.output = `Erreur lors de la création du dossier : ${dirName}`;
-                    state = 'warning'
+                if (!failed) {
+                    createdDirs.push(rawPath);
                 }
             }
 
-            return state
+            if (createdDirs.length) {
+                this.preserveCurrentPath();
+                this.createTree();
+                this.output = `Dossier(s) créé(s) : ${createdDirs.join(', ')}`;
+                if (errors.length) {
+                    this.output += ` | ${errors.join(' | ')}`;
+                }
+                this.stats.createdDirectory = true;
+                this.checkBadges();
+                return 'valid';
+            }
+
+            this.output = errors.join(' | ') || 'Aucun dossier créé';
+            return errors.length ? 'warning' : 'valid';
         },
-        createFile(params) {
+        createFile(params) {//touch
             if (!params) {
                 this.output = 'Nom de fichier requis';
                 return;
             }
-            
-            const targetNode = this.findNodeInTree(d3.hierarchy(this.folderTreeData), this.currentNode.data.name, this.currentNode.depth);
 
-            let filesNames = "";
-            for (let index = 0; index < params.length; index++) {
-                const fileName = params[index];
+            const args = Array.isArray(params) ? params : [params];
+            const options = args.filter((arg) => arg.startsWith('-'));
+            const files = args.filter((arg) => !arg.startsWith('-'));
 
-                if(index==0)
-                    filesNames += params[index];
-                else
-                    filesNames += ", " + params[index];
-
-                if (targetNode) {
-                    if (!targetNode.children) {
-                        targetNode.children = [];
-                    }
-
-                    const now = new Date();
-
-
-                    const month = String(now.getMonth() + 1).padStart(2, '0');
-
-                    const day = String(now.getDate()).padStart(2, '0');
-
-
-                    const hours = String(now.getHours()).padStart(2, '0');
-
-                    const minutes = String(now.getMinutes()).padStart(2, '0');
-
-
-                    const formattedDate = `${String(now.getFullYear()).slice(2).padStart(2, '0')}-${month}-${day} ${hours}:${minutes}`;
-
-
-                    const file = {
-
-                        name: fileName, 
-                        type: "f",
-                        rights: "-rwxr-xr-x",
-                        user: "user",
-                        group: "user",
-                        hidden: fileName[0] == '.' ? true : false,
-                        date: formattedDate,
-                        children: null,
-                    }
-
-                    targetNode.children.push(file);
-                    targetNode.data.children.push(file);
-                }
+            if (!files.length) {
+                this.output = 'Aucun fichier spécifié';
+                return;
             }
 
-            // console.log("folder", this.folderTreeData);
+            const updateAccess = options.some((opt) => opt.includes('a'));
+            const updateModify = options.some((opt) => opt.includes('m'));
 
-            let pwd = this.getPath(targetNode)
-            this.pwd = pwd.replace("root", "")
-            this.createTree();
-            this.output = `Fichier créé : ${filesNames}`;
+            const created = [];
+            const updated = [];
+            const errors = [];
+
+            for (const filePath of files) {
+                const targetInfo = this.getNodeFromPath(filePath, { stopBeforeLast: true, includeFiles: true });
+                if (!targetInfo || !targetInfo.targetName) {
+                    errors.push(`touch: chemin invalide '${filePath}'`);
+                    continue;
+                }
+
+                const parentNode = targetInfo.node;
+                const fileName = targetInfo.targetName;
+                const existing = this.getChildNode(parentNode, fileName);
+
+                if (existing) {
+                    if (existing.data.type === 'd') {
+                        errors.push(`touch: '${filePath}' est un dossier`);
+                        continue;
+                    }
+
+                    if (!this.hasPermission(existing, 'w')) {
+                        errors.push(`touch: permissions insuffisantes pour modifier '${filePath}'`);
+                        continue;
+                    }
+
+                    existing.data.date = this.getFormattedDate();
+                    updated.push(filePath);
+                    continue;
+                }
+
+                if (!this.hasPermission(parentNode, ['w', 'x'])) {
+                    errors.push(`touch: permissions insuffisantes dans '${parentNode.data.name}'`);
+                    continue;
+                }
+
+                this.createFileNode(parentNode, fileName);
+                created.push(filePath);
+            }
+
+            if (created.length || updated.length) {
+                this.preserveCurrentPath();
+                this.createTree();
+                const messages = [];
+                if (created.length) {
+                    messages.push(`Fichier(s) créé(s) : ${created.join(', ')}`);
+                }
+                if (updated.length) {
+                    messages.push(`Horodatage mis à jour : ${updated.join(', ')}`);
+                }
+                if (errors.length) {
+                    messages.push(errors.join(' | '));
+                }
+                this.output = messages.join(' | ');
+                if (created.length) {
+                    this.stats.createdFile = true;
+                    this.checkBadges();
+                }
+                return;
+            }
+
+            this.output = errors.join(' | ') || 'Aucun fichier traité';
         },
-        removeItem(params) {
-            if (!params) {
+        removeItem(params) {//rm
+            const args = Array.isArray(params) ? params : (params ? [params] : []);
+            if (!args.length) {
                 this.output = 'Erreur : Aucun nom spécifié';
                 return;
             }
 
+            const options = args.filter((arg) => arg.startsWith('-'));
+            const targets = args
+                .filter((arg) => !arg.startsWith('-'))
+                .map((arg) => arg.endsWith('/') && arg.length > 1 ? arg.replace(/\/+$/, '') : (arg === '/' ? arg : arg.replace(/\/+$/, '')));
+            if (!targets.length) {
+                this.output = 'Erreur : Aucun fichier ou dossier à supprimer';
+                return;
+            }
+
+            if (!this.hasPermission(this.currentNode, ['w', 'x'])) {
+                this.output = `Permissions non accordées pour modifier le contenu de '${this.currentNode.data.name}'.`;
+                return;
+            }
+
+            const recursive = options.some((opt) => opt.includes('r'));
+            const force = options.some((opt) => opt.includes('f'));
+            const interactive = !force && options.some((opt) => opt.includes('i'));
+            const children = this.currentNode.children || this.currentNode._children || [];
+
+            const escapeRegex = (str) =>
+                str.replace(/([.+?^${}()|[\]\\])/g, '\\$1');
+            const globToRegex = (pattern) => {
+                const escaped = escapeRegex(pattern);
+                return new RegExp(`^${escaped.replace(/\*/g, '.*')}$`);
+            };
+
             function remove(tree, child){
                 if(tree?.name == child.parent.data.name && tree?.date == child.parent?.data.date){
-                    const index = tree.children.findIndex((_child) => _child.name === child.data.name);
-
-                    tree.children.splice(index, 1);
+                    const index = tree.children?.findIndex((_child) => _child.name === child.data.name);
+                    if (index > -1) {
+                        tree.children.splice(index, 1);
+                    }
                     return;
                 }
                 else{
@@ -1586,42 +2353,87 @@
                 }
             }
 
-            let children = this.currentNode.children || this.currentNode._children;
-            // console.log("data-before", this.folderTreeData)
-            // console.log("params", params, children);
-            if( this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("w") && this.currentNode.data?.rights.split("").slice(1, 4).join("").includes("x") ){
-                for (let index = 0; index < params.length; index++) {
-                    const element = params[index]; 
+            const blockedDirs = new Set();
+            const deniedItems = new Set();
+            const skippedInteractive = new Set();
+            const toDelete = [];
+            let removedDirectoryRecursive = false;
+            targets.forEach((pattern) => {
+                const regex = globToRegex(pattern === '' ? '*' : pattern);
+                children.forEach((child) => {
+                    if (!regex.test(child.data.name)) return;
 
-                    
-                    if( ! element.includes("-") ){// not option
-                        if( ! params.includes("-r") ){
-                            index = children.findIndex((child) => child.data.name === element && child.data.type !== "d");
-                        }
-                        else{
-                            index = children.findIndex((child) => child.data.name === element);
-                        }
-
-                        if (index === -1) {
-                            this.output = `Erreur : Élément '${element}' introuvable`;
-                            return;
-                        }
-
-                        let child = children[index];
-
-                        remove(this.folderTreeData, child)
-                        
-                        children.splice(index, 1);
+                    if (child.data.type === 'd' && !recursive) {
+                        blockedDirs.add(child.data.name);
+                        return;
                     }
+
+                    if (child.data.type === 'd' && recursive && !this.hasPermission(child, 'x')) {
+                        deniedItems.add(child.data.name);
+                        return;
+                    }
+
+                     if (child.data.type === 'd' && recursive) {
+                        removedDirectoryRecursive = true;
+                    }
+
+                    if (!toDelete.includes(child)) {
+                        toDelete.push(child);
+                    }
+                });
+            });
+
+            if (!toDelete.length) {
+                if (blockedDirs.size && !force) {
+                    this.output = `Utilisez l'option -r pour supprimer les dossiers : ${Array.from(blockedDirs).join(', ')}`;
                 }
-            }
-            else{
-                this.output = `Vous ne possédez pas les droits nécessaire pour supprimé cet élément '${params}'`;
+                else if (deniedItems.size && !force) {
+                    this.output = `Permissions insuffisantes pour supprimer : ${Array.from(deniedItems).join(', ')}`;
+                }
+                else if (!force) {
+                    this.output = `Erreur : Aucun élément correspondant à '${targets.join(', ')}'`;
+                }
+                else {
+                    this.output = '';
+                }
                 return;
             }
-            // console.log("data", this.folderTreeData, "|", this.folderTreeNoHidden, "|", children)
+
+            const deletedList = [];
+            toDelete.forEach((child) => {
+                if (interactive && typeof window !== 'undefined') {
+                    const confirmDelete = window.confirm(`Supprimer '${child.data.name}' ?`);
+                    if (!confirmDelete) {
+                        skippedInteractive.add(child.data.name);
+                        return;
+                    }
+                }
+                remove(this.folderTreeData, child);
+                const idx = children.findIndex((c) => c === child);
+                if (idx > -1) {
+                    children.splice(idx, 1);
+                }
+                deletedList.push(child.data.name);
+            });
+
             this.updateTree(this.currentNode);
-            this.output = `Élément '${params}' supprimé avec succès`;
+            const deletedNames = deletedList.join(', ');
+            let extraInfo = '';
+            if (blockedDirs.size) {
+                extraInfo += ` | Dossiers ignorés (ajoutez -r) : ${Array.from(blockedDirs).join(', ')}`;
+            }
+            if (deniedItems.size) {
+                extraInfo += ` | Accès refusé : ${Array.from(deniedItems).join(', ')}`;
+            }
+            if (skippedInteractive.size) {
+                extraInfo += ` | Ignoré (option -i) : ${Array.from(skippedInteractive).join(', ')}`;
+            }
+            const base = deletedNames ? `Élément(s) supprimé(s) : ${deletedNames}` : 'Aucun élément supprimé';
+            this.output = `${base}${extraInfo}`;
+            if (removedDirectoryRecursive) {
+                this.stats.removedDirectory = true;
+                this.checkBadges();
+            }
         },
         getPath(node) {
             if (node.parent) {
@@ -1629,76 +2441,120 @@
             }
             return node.data.name;
         },
-        chmodItem(itemName, permissions) {
-            if (!itemName || !permissions) {
-                this.output = 'Erreur : Nom d\'élément ou permissions non spécifiés';
-                return "error";
-            }
-
-            const target = this.findNodeInTree(this.currentNode, itemName);
-
-            if (!target) {
-                this.output = `Erreur : Élément '${itemName}' introuvable`;
-                return "warning";
+        handleChmod(params) {
+            const args = Array.isArray(params) ? params : [params];
+            if (!args.length) {
+                this.output = 'Usage: chmod [options] mode fichier';
+                return 'error';
             }
 
             this.chmodInfos.fileName = "";
             this.chmodInfos.rights = "----------";
+            this.chmodInfos.data.user = [];
+            this.chmodInfos.data.group = [];
+            this.chmodInfos.data.other = [];
 
-            // format numérique (ex: 755)
-            if (/^[0-7]{3}$/.test(permissions)) {
-                let permStr = this.convertNumericPermissions(permissions);
+            const options = args.filter((arg) => arg.startsWith('-'));
+            const rest = args.filter((arg) => !arg.startsWith('-'));
 
-                target.data.rights = permStr;
-                target.data.rights = target.data.type.replace("f", "-") + target.data.rights.slice(1)
-                target.rights = target.data.rights;
-
-                const name = target.data.name
-
-                delete target.data;
-                delete target.parent;
-                delete target.depth;
-                delete target._children;
-                delete target.height;
-
-                this.chmodInfos.fileName = name;
-                this.chmodInfos.rights = target.rights;
-
-                this.buidRightsInfos()
-
-                this.updateNode(this.folderTreeData, name, target.depth, target)
-            }
-            else if (/^[ugoa]+[+-=][rwx]+$/.test(permissions)) {// format symbolique ex: u+r, g-w
-                target.data.rights = this.applySymbolicPermissions(target.data.rights, permissions);
-
-                target.data.rights = target.data.type.replace("f", "-") + target.data.rights.slice(1)
-                target.rights = target.data.rights;
-
-                const name = target.data.name
-
-                delete target.data;
-                delete target.parent;
-                delete target.depth;
-                delete target._children;
-                delete target.height;
-
-                this.chmodInfos.fileName = name;
-                this.chmodInfos.rights = target.rights;
-
-                this.buidRightsInfos()
-
-                this.updateNode(this.folderTreeData, name, target.depth, target)
-            }
-            else {
-                this.output = 'Erreur : Format de permissions invalide';
-                return "error";
+            if (rest.length < 2) {
+                this.output = 'Erreur : préciser les permissions et au moins un fichier';
+                return 'error';
             }
 
-            this.root = d3.hierarchy(this.folderTreeData)
+            const recursive = options.some((opt) => opt.includes('R'));
+            const modeSpec = rest.shift();
+            const isNumeric = /^[0-7]{3}$/.test(modeSpec);
 
-            this.createTree();
-            this.output = `Permissions de '${itemName}' mises à jour en '${target.rights}'`;
-            return "valid"
+            const symbolicSegments = !isNumeric ? modeSpec.split(',') : [];
+            if (!isNumeric) {
+                const validSymbolic = symbolicSegments.every((segment) => /^[ugoa]*[+-=][rwx]+$/.test(segment));
+                if (!validSymbolic) {
+                    this.output = 'Erreur : Format symbolique invalide';
+                    return 'error';
+                }
+            }
+
+            const updated = [];
+            const missing = [];
+            const denied = [];
+
+            rest.forEach((targetPath) => {
+                const resolved = this.getNodeFromPath(targetPath, { includeFiles: true });
+                if (!resolved) {
+                    missing.push(targetPath);
+                    return;
+                }
+
+                const node = resolved.node;
+                if (!this.isOwner(node)) {
+                    denied.push(targetPath);
+                    return;
+                }
+
+                this.applyChmodToNode(node, { modeSpec, isNumeric, symbolicSegments });
+                if (recursive && node.data.type === 'd') {
+                    this.applyChmodRecursive(node, { modeSpec, isNumeric, symbolicSegments }, denied);
+                }
+
+                this.chmodInfos.fileName = node.data.name;
+                this.chmodInfos.rights = node.data.rights;
+                this.buildRightsInfos();
+                updated.push(targetPath);
+            });
+
+            if (updated.length) {
+                this.preserveCurrentPath();
+                this.createTree();
+            }
+
+            const messages = [];
+            if (updated.length) {
+                messages.push(`Permissions mises à jour pour : ${updated.join(', ')}`);
+            }
+            if (missing.length) {
+                messages.push(`Introuvable : ${missing.join(', ')}`);
+            }
+            if (denied.length) {
+                messages.push(`Accès refusé : ${denied.join(', ')}`);
+            }
+
+            this.output = messages.join(' | ') || 'Aucune mise à jour effectuée';
+            if (!updated.length) {
+                return 'warning';
+            }
+            return 'valid';
+        },
+        applyChmodToNode(node, { modeSpec, isNumeric, symbolicSegments }) {
+            if (isNumeric) {
+                let permStr = this.convertNumericPermissions(modeSpec);
+                node.data.rights = permStr;
+                node.data.rights = node.data.type.replace("f", "-") + node.data.rights.slice(1);
+                node.rights = node.data.rights;
+                return;
+            }
+
+            let rights = node.data.rights;
+            symbolicSegments.forEach((segment) => {
+                rights = this.applySymbolicPermissions(rights, segment);
+            });
+            node.data.rights = node.data.type.replace("f", "-") + rights.slice(1);
+            node.rights = node.data.rights;
+        },
+        applyChmodRecursive(node, format, denied) {
+            const stack = [...(node.children || node._children || [])];
+            while (stack.length) {
+                const current = stack.pop();
+                if (!this.isOwner(current)) {
+                    denied.push(this.getPath(current).replace('root', '') || current.data.name);
+                    continue;
+                }
+                this.applyChmodToNode(current, format);
+                if (current.data.type === 'd') {
+                    const nextChildren = current.children || current._children || [];
+                    stack.push(...nextChildren);
+                }
+            }
         },
         convertNumericPermissions(numeric) {
             const permissionMap = ['---', '--x', '-w-', '-wx', 'r--', 'r-x', 'rw-', 'rwx'];
@@ -1709,7 +2565,11 @@
             let [owner, group, other] = currentRights.slice(1).match(/.{3}/g); // Obtenir les permissions
 
             // decomposition de la commande
-            const [entities, operation, modes] = symbolic.match(/^([ugoa]+)([+-=][rwx]+)$/).slice(1);
+            const match = symbolic.match(/^([ugoa]+)([+-=])([rwx]+)$/);
+            if (!match) {
+                return currentRights;
+            }
+            const [, entities, operation, modes] = match;
 
 
             // appliquer la modification aux entités concernées
@@ -1754,16 +2614,276 @@
 
             return updated;
         },
-        hasPermission(node, permission) {
-            const permissions = {
-
-                'r': 4,
-                'w': 2,
-                'x': 1
+        getFormattedDate() {
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${String(now.getFullYear()).slice(2).padStart(2, '0')}-${month}-${day} ${hours}:${minutes}`;
+        },
+        ensureChildren(node) {
+            if (node.children) {
+                return node.children;
+            }
+            if (node._children) {
+                node.children = node._children;
+                return node.children;
+            }
+            node.children = [];
+            return node.children;
+        },
+        getChildNode(node, name) {
+            const children = node.children || node._children || [];
+            return children.find((child) => child.data.name === name);
+        },
+        getDirectoryChild(node, name) {
+            const child = this.getChildNode(node, name);
+            if (child && child.data.type === 'd') {
+                return child;
+            }
+            return null;
+        },
+        createDirectoryNode(parent, name) {
+            const formattedDate = this.getFormattedDate();
+            const dirData = {
+                name,
+                type: "d",
+                rights: "drwxr-xr-x",
+                user: this.currentUser,
+                group: this.currentGroups[0] || this.currentUser,
+                hidden: name[0] === '.',
+                date: formattedDate,
+                children: [],
             };
-            const userPermissions = node.data.rights.slice(1, 4).split('').map(char => permissions[char] || 0).reduce((a, b) => a + b, 0);
+            if (!parent.data.children) {
+                parent.data.children = [];
+            }
+            parent.data.children.push(dirData);
 
-            return userPermissions & permissions[permission];
+            const newNode = {
+                data: dirData,
+                parent,
+                depth: (parent.depth || 0) + 1,
+                children: [],
+                _children: [],
+            };
+            const collection = this.ensureChildren(parent);
+            collection.push(newNode);
+
+            return newNode;
+        },
+        createFileNode(parent, name) {
+            const formattedDate = this.getFormattedDate();
+            const fileData = {
+                name,
+                type: "f",
+                rights: "-rwxr-xr-x",
+                user: this.currentUser,
+                group: this.currentGroups[0] || this.currentUser,
+                hidden: name[0] === '.',
+                date: formattedDate,
+                children: null,
+            };
+            if (!parent.data.children) {
+                parent.data.children = [];
+            }
+            parent.data.children.push(fileData);
+
+            const newNode = {
+                data: fileData,
+                parent,
+                depth: (parent.depth || 0) + 1,
+                children: null,
+                _children: null,
+            };
+            const collection = this.ensureChildren(parent);
+            collection.push(newNode);
+
+            return newNode;
+        },
+        getNodeFromPath(path, options = {}) {
+            const { stopBeforeLast = false, includeFiles = false } = options;
+            if (path === undefined || path === null) {
+                return null;
+            }
+
+            const isAbsolute = path.startsWith('/');
+            let current = isAbsolute ? this.root : this.currentNode;
+            const segments = path.split('/');
+            let targetName = null;
+
+            for (let i = 0; i < segments.length; i++) {
+                const segment = segments[i];
+                if (!segment || segment === '.') {
+                    continue;
+                }
+
+                if (segment === '..') {
+                    if (current.parent) {
+                        current = current.parent;
+                    }
+                    continue;
+                }
+
+                const isLast = i === segments.length - 1;
+                if (stopBeforeLast && isLast) {
+                    targetName = segment;
+                    break;
+                }
+
+                const children = current.children || current._children || [];
+                const found = children.find((child) => child.data.name === segment);
+
+                if (!found) {
+                    return null;
+                }
+
+                if (found.data.type === 'f' && (!includeFiles && !(isLast && !stopBeforeLast))) {
+                    return null;
+                }
+
+                current = found;
+            }
+
+            if (stopBeforeLast) {
+                return targetName ? { node: current, targetName } : null;
+            }
+
+            return { node: current };
+        },
+        getAutocompleteContext(param) {
+            if (typeof param !== 'string') {
+                return null;
+            }
+
+            let dirPath = '';
+            let partial = param;
+
+            if (param.includes('/')) {
+                const endsWithSlash = param.endsWith('/');
+                if (endsWithSlash) {
+                    let base = param.replace(/\/+$/, '');
+                    if (!base && param.startsWith('/')) {
+                        base = '/';
+                    }
+                    dirPath = base;
+                    partial = '';
+                } 
+                else {
+                    const lastSlash = param.lastIndexOf('/');
+                    let base = param.slice(0, lastSlash);
+                    if (lastSlash === 0) {
+                        base = '/';
+                    }
+                    dirPath = base;
+                    partial = param.slice(lastSlash + 1);
+                }
+            }
+
+            if (dirPath && dirPath !== '/') {
+                dirPath = dirPath.replace(/\/+$/, '');
+            }
+
+            let basePrefix = '';
+            if (!dirPath) {
+                basePrefix = '';
+            } 
+            else if (dirPath === '/') {
+                basePrefix = '/';
+            } 
+            else {
+                basePrefix = `${dirPath.replace(/\/+$/, '')}/`;
+            }
+
+            return { dirPath, partial, basePrefix };
+        },
+        normalizeTutorialPath(input) {
+            if (!input || typeof input !== 'string') {
+                return '';
+            }
+            let value = input.trim();
+            if (value === '' || value === '.') {
+                return this.getPath(this.currentNode) || 'root';
+            }
+            const trimmed = value.replace(/\/+$/, '');
+            if (trimmed === '') {
+                return 'root';
+            }
+            const isAbsolute = trimmed.startsWith('/');
+            const base = isAbsolute
+                ? ['root']
+                : (this.getPath(this.currentNode) || 'root')
+                    .split('/')
+                    .filter((seg) => seg.length > 0);
+            if (base[0] !== 'root') {
+                base.unshift('root');
+            }
+            const segments = trimmed.split('/').filter((seg) => seg.length > 0);
+            const stack = [...base];
+
+            segments.forEach((segment) => {
+                if (segment === '.' || segment === '') {
+                    return;
+                }
+                if (segment === '..') {
+                    if (stack.length > 1) {
+                        stack.pop();
+                    }
+                    return;
+                }
+                stack.push(segment);
+            });
+
+            return stack.join('/');
+        },
+        preserveCurrentPath() {
+            const nodePath = this.currentNode ? this.getPath(this.currentNode) : '';
+            let normalized = nodePath ? nodePath.replace("root", "") : "/";
+            if (!normalized || normalized === "") {
+                normalized = "/";
+            }
+            this.pwd = normalized;
+        },
+        getPermissionBlock(node) {
+            const meta = node?.data ?? node;
+            if (!meta?.rights) {
+                return '';
+            }
+            const rights = meta.rights;
+            const owner = rights.slice(1, 4);
+            const group = rights.slice(4, 7);
+            const other = rights.slice(7, 10);
+
+            if (meta.user === this.currentUser) {
+                return owner;
+            }
+            if (this.currentGroups?.includes(meta.group)) {
+                return group;
+            }
+            return other;
+        },
+        isOwner(node) {
+            const meta = node?.data ?? node;
+            return meta?.user === this.currentUser;
+        },
+        hasPermission(node, permissions) {
+            const block = this.getPermissionBlock(node);
+            if (!block) {
+                return false;
+            }
+
+            const perms = Array.isArray(permissions)
+                ? permissions
+                : (typeof permissions === 'string' && permissions.length > 0
+                    ? permissions.split('')
+                    : []);
+
+            if (perms.length === 0) {
+                return true;
+            }
+
+            return perms.every((perm) => block.includes(perm));
         }
 
     },
@@ -1781,15 +2901,23 @@
                 padding: 5px;
                 background-color: #333;
                 width: 50%;
-                height: 50vh;
+                height: 65vh;
                 position: relative;
                 overflow: hidden;
                 box-shadow: 1px 1px 5px #333;
+                .badges-actions {
+                    margin: auto;
+                    width: 97%;
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 8px;
+                    margin-bottom: 12px;
+                }
                 .v-text-field {
                     margin: auto;
                     width: 97%;
                     position: absolute;
-                    top: 0;
+                    // top: 50px;
                     z-index: 1;
                 }
                 .v-list {
@@ -1797,11 +2925,10 @@
                     display: block;
                     overflow: auto !important;
                     position: relative;
-                    height: 90%;
-                    top: 70px;
-                    // margin-bottom: 70px;
-                    padding-bottom: 10px;
-                    margin-top: -30px;
+                    height: calc(100% - 95px);
+                    top: 90px;
+                    padding: 0 6px 30px;
+                    margin-top: -20px;
                     .v-list-item-title{
                         .in-terminal-i {
                             font-size: 17px !important;
@@ -1826,7 +2953,7 @@
     #tree {
         margin: auto;
         width: 50%;
-        height: 50vh;
+        height: 65vh;
         svg {
             overflow: hidden;
             height: 100%;
@@ -1902,6 +3029,52 @@
         100% {
             transform: scale(1);
         }
+    }
+
+    .tutorial-card {
+        margin: 20px;
+        // background-color: rgba(14, 20, 30, 0.9);
+        background-color: white;
+        border: 1px solid rgba(125, 226, 209, 0.3);
+        color: #e9f8ff;
+        .text-subtitle-1 {
+            color: #DDDDDDCC;
+            margin-top: 25px;
+        }
+
+        .tutorial-description {
+            color: #CCCCCCCC;
+        }
+
+        .info-step-tutorial {
+            margin-top: -10px;
+            color: #CCCCCCCC;
+        }
+
+        .v-alert {
+            margin-top: 60px;
+        }
+    }
+
+    .tutorial-feedback {
+        margin-top: 8px;
+        font-size: 0.85rem;
+        color: #7de2d1;
+    }
+
+    .badges-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin: 12px 0;
+    }
+
+    .badge-earned {
+        color: #fdd835;
+        font-weight: 600;
+    }
+
+    .badge-locked {
+        color: #b0bec5;
     }
 </style>
 

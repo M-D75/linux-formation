@@ -5,18 +5,26 @@
             max-width="520"
         >
             <v-card>
-                <v-card-title class="text-h6">
+                <v-card-title class="text-h6 mission-title">
+                    <v-icon color="cyan-lighten-3" class="mr-2">mdi-rocket-launch</v-icon>
                     Briefing de mission
                 </v-card-title>
-                <v-card-text>
+                <v-card-text class="mission-intro">
                     <p>
-                        Bienvenue jeune padawan du terminal ! L'ordinateur d'entraînement simulateur Linux a besoin de toi.
+                        👋 Bienvenue, padawan du terminal ! L'ordinateur d'entraînement Linux vient de se réveiller
+                        et cherche un(e) pilote prêt(e) à tapoter des commandes héroïques.
                     </p>
+                    <br>
                     <p>
-                        Objectif : repérer ta position, explorer les dossiers, nettoyer un vieux répertoire <strong>archives</strong> et préparer un nouveau dossier <strong>mission</strong> avec son fichier <strong>briefing.txt</strong>.
+                        🎯 <span class="font-weight-bold">Ta mission express</span> :
+                        <br>- Te situer dans l'arborescence
+                        <br>- Explorer les environs
+                        <br>- Nettoyer l'antique dossier <strong>archives</strong>
+                        <br>- Monter l'opération <strong>mission/briefing.txt</strong>
                     </p>
+                    <br>
                     <p>
-                        Tu peux suivre le tutoriel guidé ou tout passer et jouer en autonomie.
+                        🤔 Tu veux un copilote baptisé "Tutoriel" ou tu fonces en solo ?
                     </p>
                 </v-card-text>
                 <v-card-actions class="justify-end">
@@ -76,8 +84,16 @@
                             <div
                                 v-if="tutorial.feedback"
                                 class="tutorial-feedback"
+                                :class="tutorial.feedbackType === 'success' ? 'is-success' : 'is-hint'"
                             >
-                                {{ tutorial.feedback }}
+                                <v-icon
+                                    size="18"
+                                    class="feedback-icon"
+                                    :color="tutorial.feedbackType === 'success' ? 'green-accent-3' : 'amber-accent-3'"
+                                >
+                                    {{ tutorial.feedbackType === 'success' ? 'mdi-check-circle' : 'mdi-lightbulb-on' }}
+                                </v-icon>
+                                <span>{{ tutorial.feedback }}</span>
                             </div>
                         </v-card-text>
 
@@ -99,8 +115,9 @@
                     timeout="4000"
                     location="top"
                     color="success"
+                    variant="tonal"
                 >
-                    Mission accomplie ! Tu peux continuer à t'entraîner librement.
+                    <v-icon>mdi-check</v-icon><span>Mission accomplie ! Tu peux continuer à t'entraîner librement.</span>
                 </v-snackbar>
 
                 <v-navigation-drawer
@@ -133,16 +150,19 @@
                                     :key="badge.id"
                                     cols="6"
                                 >
-                                    <v-tooltip :text="badge.description" location="bottom">
-                                        <template v-slot:activator="{ props }">
+                                            <v-tooltip :text="badge.description" location="bottom">
+                                                <template v-slot:activator="{ props }">
                                             <v-card
                                                 v-bind="props"
-                                                class="badge-item"
-                                                :elevation="badge.earned ? 6 : 1"
-                                                :color="badge.earned ? 'amber-darken-3' : 'grey-darken-3'"
+                                                :class="['badge-item', badge.earned ? 'badge-earned-card' : 'badge-locked-card']"
+                                                :elevation="badge.earned ? 8 : 2"
+                                                variant="flat"
                                             >
                                                 <v-card-text class="text-center">
-                                                    <v-icon size="28">
+                                                    <v-icon
+                                                        size="28"
+                                                        :class="badge.earned ? 'badge-icon-earned' : 'badge-icon-locked'"
+                                                    >
                                                         {{ badge.icon }}
                                                     </v-icon>
                                                     <div class="text-caption" style="margin-top: 6px;">
@@ -158,19 +178,41 @@
                     </v-card>
                 </v-navigation-drawer>
 
-                <v-snackbar
-                    v-model="badgeSnackbar.show"
-                    timeout="4000"
-                    color="amber-darken-2"
-                    location="bottom"
-                >
-                    <div class="badge-snackbar-content">
-                        <v-icon size="18" class="mr-2" v-if="badgeSnackbar.icon">
-                            {{ badgeSnackbar.icon }}
-                        </v-icon>
-                        <span>{{ badgeSnackbar.message }}</span>
+                <transition name="badge-unlock">
+                    <div
+                        v-if="badgeSnackbar.show"
+                        class="badge-unlock-toast"
+                    >
+                        <div class="badge-glow"></div>
+                        <div class="badge-unlock-content">
+                            <div class="badge-icon-wrapper" v-if="badgeSnackbar.icon">
+                                <v-icon class="badge-icon" size="36">
+                                    {{ badgeSnackbar.icon }}
+                                </v-icon>
+                            </div>
+                            <div class="badge-unlock-text">
+                                <div class="badge-unlock-label">
+                                    Succès débloqué
+                                </div>
+                                <div class="badge-unlock-name">
+                                    {{ badgeSnackbar.message }}
+                                </div>
+                                <div class="badge-unlock-description" v-if="badgeSnackbar.description">
+                                    {{ badgeSnackbar.description }}
+                                </div>
+                            </div>
+                            <v-btn
+                                color="amber-accent-1"
+                                variant="text"
+                                size="small"
+                                class="badge-view-btn"
+                                @click="openBadgePanel"
+                            >
+                                Voir
+                            </v-btn>
+                        </div>
                     </div>
-                </v-snackbar>
+                </transition>
 
                 <!-- Command output section -->
                 <v-list 
@@ -530,10 +572,11 @@
                 showSuccess: false,
                 currentStep: 0,
                 feedback: '',
+                feedbackType: '',
                 steps: [
                     {
                         id: 'pwd',
-                        title: '1. Repérer ta position',
+                        title: '1. Repérez votre position',
                         description: 'Tape <code>pwd</code> pour afficher le chemin comme <strong>root &gt; home &gt; user</strong>.',
                         success: 'Tu sais maintenant où tu te trouves.'
                     },
@@ -580,6 +623,8 @@
                 show: false,
                 message: '',
                 icon: '',
+                description: '',
+                timeoutId: null,
             },
             badges: [
                 { id: 'explorer', title: 'Explorateur', description: 'Visite 10 répertoires différents.', earned: false, icon: 'mdi-compass' },
@@ -603,6 +648,11 @@
         this.createOutputAnimate()
         this.loadCommandHistory();
         this.loadBadgeState();
+    },
+    beforeUnmount() {
+        if (this.badgeSnackbar.timeoutId) {
+            clearTimeout(this.badgeSnackbar.timeoutId);
+        }
     },
     methods: {
         buildRightsInfos(){
@@ -1403,17 +1453,20 @@
             this.tutorial.showSuccess = false;
             this.tutorial.currentStep = 0;
             this.tutorial.feedback = '';
+            this.tutorial.feedbackType = '';
         },
         skipTutorial() {
             this.tutorial.showIntro = false;
             this.tutorial.active = false;
             this.tutorial.showSuccess = false;
             this.tutorial.feedback = '';
+            this.tutorial.feedbackType = '';
         },
         finishTutorial() {
             this.tutorial.completed = true;
             this.tutorial.active = false;
             this.tutorial.feedback = 'Mission accomplie, continue librement !';
+            this.tutorial.feedbackType = 'success';
             this.tutorial.showSuccess = true;
             this.stats.tutorialCompleted = true;
             this.checkBadges();
@@ -1429,6 +1482,9 @@
             }
 
             const normalizedCmd = (cmd || '').toLowerCase();
+            const paramsList = Array.isArray(params)
+                ? params.filter((param) => typeof param === 'string' && param.trim() !== '')
+                : (typeof params === 'string' && params.trim() !== '' ? [params] : []);
             const currentNodePath = this.currentNode ? this.getPath(this.currentNode) : '';
             const currentPath = currentNodePath ? (currentNodePath.replace('root', '') || '/') : '/';
             const documentsNode = this.root ? this.getNodeFromPath('/home/user/documents') : null;
@@ -1465,11 +1521,128 @@
 
             if (success) {
                 this.tutorial.feedback = step.success || 'Étape validée.';
+                this.tutorial.feedbackType = 'success';
                 this.tutorial.currentStep += 1;
                 if (this.tutorial.currentStep >= this.tutorial.steps.length) {
                     this.finishTutorial();
                 }
+            } else {
+                if (!normalizedCmd) {
+                    this.tutorial.feedback = '';
+                    this.tutorial.feedbackType = '';
+                    return;
+                }
+                const errorMessage = this.getTutorialErrorMessage(step, {
+                    normalizedCmd,
+                    paramsList,
+                    currentPath,
+                    archivesExists: !!archivesNode,
+                    missionExists: !!missionNode,
+                    briefingExists: !!briefingNode,
+                });
+                this.tutorial.feedback = errorMessage || 'Cette commande ne valide pas encore cette étape. Réessaie en suivant l\'indice ci-dessus.';
+                this.tutorial.feedbackType = 'hint';
             }
+        },
+        getTutorialErrorMessage(step, context) {
+            const {
+                normalizedCmd,
+                paramsList,
+                currentPath,
+                archivesExists,
+                missionExists,
+                briefingExists,
+            } = context;
+            const lowerParams = paramsList.map((param) => param.toLowerCase());
+            const mentions = (term) =>
+                lowerParams.some((param) => !param.startsWith('-') && param.includes(term));
+            const hasFlag = (flag) =>
+                lowerParams.some((param) => param.startsWith('-') && param.includes(flag));
+            const firstParam = paramsList[0] || '';
+
+            switch (step.id) {
+                case 'pwd':
+                    if (normalizedCmd !== 'pwd') {
+                        return 'Cette étape vérifie ta position : tape `pwd` pour afficher le chemin courant.';
+                    }
+                    break;
+                case 'ls':
+                    if (normalizedCmd !== 'ls') {
+                        return 'Utilise `ls` (ou `ls -l`) pour afficher le contenu du dossier courant.';
+                    }
+                    break;
+                case 'cd-documents':
+                    if (normalizedCmd !== 'cd') {
+                        return 'Rejoins le dossier `documents` avec la commande `cd`.';
+                    }
+                    if (!paramsList.length) {
+                        return 'Précise le dossier à atteindre : `cd documents`.';
+                    }
+                    if (!mentions('documents')) {
+                        return `Cette étape attend le dossier 'documents', pas '${firstParam}'.`;
+                    }
+                    return `Tu es encore sur ${currentPath || '/'}. Vise /home/user/documents.`;
+                case 'rm-archives':
+                    if (normalizedCmd !== 'rm') {
+                        return 'On attend la suppression du dossier `archives` avec `rm`.';
+                    }
+                    if (!paramsList.length) {
+                        return 'Ajoute l\'élément à supprimer : `rm -r archives`.';
+                    }
+                    if (!mentions('archives')) {
+                        return 'La cible à supprimer est `archives`.';
+                    }
+                    if (!hasFlag('r')) {
+                        return 'Ajoute l\'option `-r` pour supprimer le dossier : `rm -r archives`.';
+                    }
+                    if (archivesExists) {
+                        return 'Le dossier `archives` existe encore. Lance `rm -r archives` depuis /home/user/documents.';
+                    }
+                    break;
+                case 'mkdir-mission':
+                    if (normalizedCmd !== 'mkdir') {
+                        return 'Crée le dossier `mission` avec `mkdir`.';
+                    }
+                    if (!paramsList.length) {
+                        return 'Indique le nom du dossier à créer : `mkdir mission`.';
+                    }
+                    if (!mentions('mission')) {
+                        return `Le dossier attendu s'appelle 'mission', pas '${firstParam}'.`;
+                    }
+                    return 'Je ne vois toujours pas le dossier `mission` dans documents. Crée-le ici avant de continuer.';
+                case 'cd-mission':
+                    if (normalizedCmd !== 'cd') {
+                        return 'Utilise `cd` pour te déplacer dans le dossier `mission`.';
+                    }
+                    if (!paramsList.length) {
+                        return 'Ajoute le dossier cible : `cd mission`.';
+                    }
+                    if (!mentions('mission')) {
+                        return `Cette étape attend le dossier 'mission', pas '${firstParam}'.`;
+                    }
+                    return `Le répertoire courant est ${currentPath || '/'}. Rejoins /home/user/documents/mission.`;
+                case 'touch-briefing':
+                    if (normalizedCmd !== 'touch') {
+                        return 'Crée le fichier `briefing.txt` avec `touch`.';
+                    }
+                    if (!paramsList.length) {
+                        return 'Indique le nom du fichier : `touch briefing.txt`.';
+                    }
+                    if (!mentions('briefing')) {
+                        return `Le fichier attendu est 'briefing.txt', pas '${firstParam}'.`;
+                    }
+                    if (!missionExists) {
+                        return 'Crée d\'abord le dossier `mission` puis exécute `touch briefing.txt` depuis ce dossier.';
+                    }
+                    if (!briefingExists) {
+                        return 'Le fichier n\'a pas été trouvé dans `mission`. Lance `touch briefing.txt` à cet emplacement.';
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            return '';
         },
         hasChildNamed(node, name) {
             if (!node) return false;
@@ -1489,9 +1662,17 @@
                 return;
             }
             badge.earned = true;
-            this.badgeSnackbar.message = `Badge débloqué : ${badge.title}`;
+            this.badgeSnackbar.message = badge.title;
             this.badgeSnackbar.icon = badge.icon;
+            this.badgeSnackbar.description = badge.description;
             this.badgeSnackbar.show = true;
+            if (this.badgeSnackbar.timeoutId) {
+                clearTimeout(this.badgeSnackbar.timeoutId);
+            }
+            this.badgeSnackbar.timeoutId = setTimeout(() => {
+                this.badgeSnackbar.show = false;
+                this.badgeSnackbar.timeoutId = null;
+            }, 4500);
         },
         checkBadges() {
             if (this.stats.visitedPaths.length >= 10) {
@@ -1510,6 +1691,14 @@
                 this.awardBadge('mentor');
             }
             this.persistBadges();
+        },
+        openBadgePanel() {
+            this.showBadgePanel = true;
+            if (this.badgeSnackbar.timeoutId) {
+                clearTimeout(this.badgeSnackbar.timeoutId);
+                this.badgeSnackbar.timeoutId = null;
+            }
+            this.badgeSnackbar.show = false;
         },
         saveCommandHistory() {
             const payload = {
@@ -3044,6 +3233,17 @@ REMARQUES
 
         .tutorial-description {
             color: #CCCCCCCC;
+            code {
+                font-family: 'JetBrains Mono', 'Fira Code', 'Source Code Pro', monospace;
+                background: rgba(125, 226, 209, 0.18);
+                color: #00c9a7;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-weight: 600;
+                letter-spacing: 0.02em;
+                display: inline-block;
+                margin: 2px 0;
+            }
         }
 
         .info-step-tutorial {
@@ -3059,13 +3259,175 @@ REMARQUES
     .tutorial-feedback {
         margin-top: 8px;
         font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 6px;
+        padding: 8px 10px;
+        background-color: rgba(255, 255, 255, 0.08);
+        color: #d7f7ff;
+        .feedback-icon {
+            margin-right: 2px;
+        }
+        &.is-success {
+            background-color: rgba(58, 255, 176, 0.12);
+            color: #70f3c1;
+        }
+        &.is-hint {
+            background-color: rgba(255, 214, 0, 0.12);
+            color: #ffd54f;
+        }
+    }
+
+    .mission-title {
+        display: flex;
+        align-items: center;
+    }
+
+    .mission-intro {
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+
+    .badge-unlock-enter-active,
+    .badge-unlock-leave-active {
+        transition: all 0.35s ease;
+    }
+
+    .badge-unlock-enter-from,
+    .badge-unlock-leave-to {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+
+    .badge-unlock-toast {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        z-index: 500;
+        min-width: 280px;
+        max-width: 360px;
+        padding: 1px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(255, 213, 79, 0.1), rgba(0, 243, 210, 0.15));
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45);
+        overflow: hidden;
+    }
+
+    .badge-glow {
+        position: absolute;
+        inset: -30%;
+        background: radial-gradient(circle, rgba(255, 215, 64, 0.25), transparent 60%);
+        opacity: 0.8;
+        animation: pulseGlow 2.4s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    @keyframes pulseGlow {
+        0% { transform: scale(0.9); opacity: 0.6; }
+        50% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    .badge-unlock-content {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 18px;
+        background: rgba(5, 20, 33, 0.85);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .badge-icon-wrapper {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle, rgba(255, 213, 79, 0.35), rgba(0, 0, 0, 0.65));
+        box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.2);
+    }
+
+    .badge-icon {
+        color: #ffd54f;
+        text-shadow: 0 0 8px rgba(255, 213, 79, 0.9);
+    }
+
+    .badge-unlock-text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .badge-unlock-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
         color: #7de2d1;
+    }
+
+    .badge-unlock-name {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #ffffff;
+    }
+
+    .badge-unlock-description {
+        font-size: 0.85rem;
+        color: #b0bec5;
+    }
+
+    .badge-view-btn {
+        text-transform: none;
+        font-weight: 600;
     }
 
     .badges-actions {
         display: flex;
         justify-content: flex-end;
         margin: 12px 0;
+    }
+
+    .badge-panel .badge-item {
+        border-radius: 16px;
+        
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(4px);
+        text-transform: none;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .badge-panel .badge-item:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+    }
+
+    .badge-earned-card {
+        position: relative;
+        color: #d5f9ff;
+        background: transparent;
+        box-shadow: 0 12px 22px rgba(0, 0, 0, 0.35), inset 0 0 20px rgba(23, 255, 221, 0.08);
+
+        border: 1px solid rgb(11 232 235) !important;
+        .v-card-text {
+            border-radius: 12px;
+            padding: 14px 12px;
+            background: linear-gradient(45deg, rgba(5, 46, 60, 0.9), rgba(8, 126, 138, 0.9));
+            color: #eaffff;
+        }
+    }
+
+    .badge-locked-card {
+        color: black;
+        background: radial-gradient(circle at top, rgba(96, 125, 139, 0.2), rgba(23, 32, 42, 0.8));
+        opacity: 0.7;
+        .v-icon {
+            color: gray
+        }
     }
 
     .badge-earned {
@@ -3075,6 +3437,14 @@ REMARQUES
 
     .badge-locked {
         color: #b0bec5;
+    }
+
+    .badge-icon-earned {
+        color: #9af7ea;
+    }
+
+    .badge-icon-locked {
+        color: rgba(255, 255, 255, 0.45);
     }
 </style>
 

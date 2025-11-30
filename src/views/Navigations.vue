@@ -114,7 +114,7 @@
                     v-model="tutorial.showSuccess"
                     timeout="4000"
                     location="top"
-                    color="success"
+                    color="primary"
                     variant="tonal"
                 >
                     <v-icon>mdi-check</v-icon><span>Mission accomplie ! Tu peux continuer à t'entraîner librement.</span>
@@ -222,23 +222,28 @@
                     bg-color="#333"
                     :height="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 205 : ''"
                 >
-                    <v-list-item
-                        v-for="(cmd, index) in commandHistory" 
+                    <template
+                        v-for="(cmd, index) in commandHistory"
                         :key="index"
                     >
-                        <div v-if="commandHistory.length-(cursorHistory) != index">
-                            <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} `"></v-list-item-title>
+                        <v-tooltip :text="getHistoryTooltip(cmd)" location="bottom">
+                            <template #activator="{ props }">
+                                <v-list-item v-bind="props">
+                                    <div v-if="commandHistory.length-(cursorHistory) != index">
+                                        <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} `"></v-list-item-title>
 
-                            <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
-                        </div>
+                                        <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
+                                    </div>
 
-                        <div v-else>
-                            <!-- <i class="mdi-close-circle mdi v-icon notranslate v-theme--light v-icon--size-default v-icon--start" aria-hidden="true"></i>  -->
-                            <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} <i class='mdi-map-marker mdi in-terminal-i v-icon' aria-hidden='true'></i>`"></v-list-item-title>
+                                    <div v-else>
+                                        <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} <i class='mdi-map-marker mdi in-terminal-i v-icon' aria-hidden='true'></i>`"></v-list-item-title>
 
-                            <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
-                        </div>
-                    </v-list-item>
+                                        <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
+                                    </div>
+                                </v-list-item>
+                            </template>
+                        </v-tooltip>
+                    </template>
                 </v-list>
             </div>
 
@@ -500,20 +505,26 @@
                         </v-chip>
                     </div>
 
-                    <div
-                        v-else
-                    >
-                        <v-chip 
-                            v-for="(cmd, index) in commandHistory.filter((cmd) => cmd.command != '')" 
+                    <div v-else>
+                        <template
+                            v-for="(cmd, index) in commandHistory.filter((cmd) => cmd.command != '')"
                             :key="index"
-                            :color="cmd.state == 'valid' ? 'green-accent-2' : (cmd.state == 'error' ? 'red-lighten-1' : 'amber-accent-4')"
-                            :prepend-icon="cmd.state == 'valid' ? 'mdi-check-circle' : (cmd.state == 'error' ? 'mdi-close-circle' : 'mdi-alert-circle')"
-                            :append-icon="commandHistory.length-(cursorHistory) == index ? 'mdi-map-marker' : ''"
-                            class="bounce"
-                            @click="command = cmd.command"
                         >
-                            {{ cmd.command }}
-                        </v-chip>
+                            <v-tooltip :text="getHistoryTooltip(cmd)" location="top">
+                                <template #activator="{ props }">
+                                    <v-chip 
+                                        v-bind="props"
+                                        :color="cmd.state == 'valid' ? 'green-accent-2' : (cmd.state == 'error' ? 'red-lighten-1' : 'amber-accent-4')"
+                                        :prepend-icon="cmd.state == 'valid' ? 'mdi-check-circle' : (cmd.state == 'error' ? 'mdi-close-circle' : 'mdi-alert-circle')"
+                                        :append-icon="commandHistory.length-(cursorHistory) == index ? 'mdi-map-marker' : ''"
+                                        class="bounce"
+                                        @click="command = cmd.command"
+                                    >
+                                        {{ cmd.command }}
+                                    </v-chip>
+                                </template>
+                            </v-tooltip>
+                        </template>
                     </div>
                 <!-- </v-chip-group> -->
             </div>
@@ -617,6 +628,19 @@
                         success: 'Briefing.txt est en place, mission accomplie !'
                     },
                 ],
+            },
+            commandDescriptions: {
+                '': 'Information système',
+                help: 'Affiche la liste des commandes disponibles.',
+                man: 'Consulte la documentation détaillée d\'une commande.',
+                pwd: 'Affiche le chemin du répertoire courant.',
+                echo: 'Renvoie du texte dans le terminal.',
+                cd: 'Change de répertoire.',
+                ls: 'Liste le contenu d\'un dossier.',
+                mkdir: 'Crée un nouveau dossier.',
+                touch: 'Crée ou met à jour un fichier.',
+                rm: 'Supprime un fichier ou un dossier.',
+                chmod: 'Modifie les permissions d\'un fichier ou dossier.',
             },
             showBadgePanel: false,
             badgeSnackbar: {
@@ -1376,10 +1400,12 @@
                 else if (matches.length > 1) {
                     this.output = `Suggestions: ${matches.join(', ')}`;
 
+                    const tooltip = this.buildCommandTooltip('', 'info', this.output);
                     this.commandHistory.push({ 
                         command: "", 
-                        state: "",
+                        state: "info",
                         output: this.output,
+                        tooltip,
                     });
 
                     setTimeout(()=>{
@@ -1434,10 +1460,12 @@
                     const suggestions = matches.map(match => match.data.name);
                     this.output = `Suggestions: ${suggestions.join(', ')}`;
                     
+                    const tooltip = this.buildCommandTooltip('', 'info', this.output);
                     this.commandHistory.push({ 
                         command: "", 
-                        state: "",
+                        state: "info",
                         output: this.output,
+                        tooltip,
                     });
                     
                     setTimeout(()=>{
@@ -1644,6 +1672,42 @@
 
             return '';
         },
+        sanitizeHistoryOutput(value) {
+            if (!value) {
+                return '';
+            }
+            return value
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/&nbsp;/gi, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        },
+        buildCommandTooltip(commandText = '', state = '', output = '') {
+            const cmdName = (commandText || '').trim().split(' ')[0] || '';
+            const baseDesc = this.commandDescriptions[cmdName] || (cmdName ? `Commande ${cmdName}` : 'Information système');
+            const cleanedOutput = this.sanitizeHistoryOutput(output);
+            let stateNote = '';
+            switch (state) {
+                case 'error':
+                    stateNote = cleanedOutput ? `Erreur : ${cleanedOutput}` : 'Erreur détectée.';
+                    break;
+                case 'warning':
+                    stateNote = cleanedOutput ? `Attention : ${cleanedOutput}` : 'Attention requise.';
+                    break;
+                case 'info':
+                    stateNote = cleanedOutput || 'Suggestion du terminal.';
+                    break;
+                default:
+                    stateNote = cleanedOutput;
+            }
+            return [baseDesc, stateNote].filter(Boolean).join(' • ');
+        },
+        getHistoryTooltip(entry) {
+            if (!entry) {
+                return '';
+            }
+            return entry.tooltip || this.buildCommandTooltip(entry.command, entry.state, entry.output);
+        },
         hasChildNamed(node, name) {
             if (!node) return false;
             const children = node.children || node._children || [];
@@ -1770,10 +1834,12 @@
             if (param.includes('-h')) {
                 this.output = this.getHelp(cmd);
                 
+                const tooltip = this.buildCommandTooltip(this.command, state, this.output);
                 this.commandHistory.push({ 
                     command: this.command, 
                     state, 
-                    output: this.output 
+                    output: this.output,
+                    tooltip,
                 });
                 
                 this.command = '';
@@ -1831,10 +1897,13 @@
 
             this.handleTutorialProgress(cmd, param);
 
+            const tooltip = this.buildCommandTooltip(this.command, state, this.output);
+            const historyOutput = state != 'error' ? this.output : `<span style="color: #fe4444">${this.output}<span/>`;
             this.commandHistory.push({ 
                     command: this.command, 
                     state,
-                    output: state != 'error' ? this.output : `<span style="color: #fe4444">${this.output}<span/>`
+                    output: historyOutput,
+                    tooltip,
                 });
             this.saveCommandHistory();
             
@@ -3309,7 +3378,7 @@ REMARQUES
         max-width: 360px;
         padding: 1px;
         border-radius: 16px;
-        background: linear-gradient(135deg, rgba(255, 213, 79, 0.1), rgba(0, 243, 210, 0.15));
+        background: linear-gradient(135deg, rgba(15, 76, 92, 0.9), rgba(0, 153, 134, 0.95));
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.45);
         overflow: hidden;
     }
@@ -3317,7 +3386,7 @@ REMARQUES
     .badge-glow {
         position: absolute;
         inset: -30%;
-        background: radial-gradient(circle, rgba(255, 215, 64, 0.25), transparent 60%);
+        background: radial-gradient(circle, rgba(125, 226, 209, 0.25), transparent 60%);
         opacity: 0.8;
         animation: pulseGlow 2.4s ease-in-out infinite;
         pointer-events: none;
@@ -3335,7 +3404,7 @@ REMARQUES
         align-items: center;
         gap: 14px;
         padding: 14px 18px;
-        background: rgba(5, 20, 33, 0.85);
+        background: linear-gradient(115deg, rgba(2, 16, 26, 0.85), rgba(5, 40, 61, 0.9));
         border-radius: 16px;
         border: 1px solid rgba(255, 255, 255, 0.08);
     }

@@ -1,5 +1,36 @@
 <template>
     <v-container>
+        <div
+            class="floating-robot"
+            @mouseenter="handleRobotHover"
+            @mouseleave="handleRobotLeave"
+            @click.stop="toggleRobotSound"
+        >
+            <img
+                :src="robotImage"
+                alt="Assistant robot"
+                :class="['robot-sprite', { 'robot-jump': robotJumping, 'robot-flicker': robotFlicker }]"
+            />
+            <div
+                v-if="robotTooltip.visible"
+                :class="['robot-tooltip', `robot-tooltip--${robotTooltip.type}`]"
+            >
+                <v-icon
+                    v-if="robotTooltip.icon"
+                    class="robot-tooltip-icon"
+                    size="16"
+                >
+                    {{ robotTooltip.icon }}
+                </v-icon>
+                <span>{{ robotTooltip.message }}</span>
+            </div>
+            <div
+                v-if="robotSoundToast.visible"
+                class="robot-sound-toggle"
+            >
+                {{ robotSoundToast.message }}
+            </div>
+        </div>
         <v-dialog
             v-model="tutorial.showIntro"
             max-width="520"
@@ -38,6 +69,46 @@
             </v-card>
         </v-dialog>
 
+        <v-dialog
+            v-model="nanoEditor.show"
+            persistent
+            max-width="720"
+        >
+            <v-card>
+                <v-card-title class="text-h6">
+                    <v-icon class="mr-2" color="deep-purple-accent-2">mdi-pencil</v-icon>
+                    {{ nanoEditor.filePath ? `Édition - ${nanoEditor.filePath}` : 'Éditeur de fichier' }}
+                </v-card-title>
+                <v-card-text>
+
+                    <v-textarea
+                        v-model="nanoEditor.content"
+                        rows="12"
+                        auto-grow
+                        variant="outlined"
+                        label="Contenu du fichier"
+                    ></v-textarea>
+
+                    <v-alert
+                        v-if="nanoEditor.error"
+                        type="error"
+                        density="compact"
+                        class="mt-4"
+                    >
+                        {{ nanoEditor.error }}
+                    </v-alert>
+                </v-card-text>
+                <v-card-actions class="justify-end">
+                    <v-btn variant="text" color="secondary" @click="closeNanoEditor">
+                        Annuler
+                    </v-btn>
+                    <v-btn color="primary" @click="saveNanoEditor">
+                        Enregistrer
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
         <div class="badges-actions">
             <v-btn
                 class="badge-toggle-btn"
@@ -50,24 +121,115 @@
             </v-btn>
         </div>
         <!-- Main container for command input and tree visualization -->
-        <div class="cont-cmd-graph-navigaion" style="display: flex;">
+        <v-slide-y-transition>
+            <div class="command-suggestions global">
+                <template v-if="commandSuggestions.length">
+                    <template
+                        v-for="cmd in commandSuggestions"
+                        :key="cmd"
+                    >
+                        <v-tooltip :text="commandDescriptions[cmd] || ''" location="top">
+                            <template #activator="{ props }">
+                                <v-chip
+                                    v-bind="props"
+                                    size="small"
+                                    color="blue"
+                                    label
+                                    class="suggestion-chip chip-fade-drop"
+                                    @click="selectCommandSuggestion(cmd)"
+                                >
+                                    {{ cmd }}
+                                </v-chip>
+                            </template>
+                        </v-tooltip>
+                    </template>
+                </template>
+
+                <template v-else>
+                    <v-tooltip
+                        v-if="!hasNoCommandMatch"
+                        text="Besoin d'aide ? Clique pour lancer help dans le terminal." 
+                        location="bottom"
+                    >
+                        <template #activator="{ props }">
+                            <v-chip
+                                v-bind="props"
+                                color="amber"
+                                variant="elevated"
+                                class="suggestion-chip chip-fade-drop"
+                                @click="injectHelpCommand"
+                            >
+                                <v-icon>mdi-help-circle</v-icon>
+                            </v-chip>
+                        </template>
+                    </v-tooltip>
+
+                    <v-tooltip
+                        v-if="hasNoCommandMatch"
+                        text="Analyse: aucune commande connue ne correspond à ces caractères."
+                        location="bottom"
+                    >
+                        <template #activator="{ props }">
+                            <v-chip
+                                v-bind="props"
+                                color="deep-orange-accent-3"
+                                variant="elevated"
+                                class="suggestion-chip chip-fade-drop"
+                                prepend-icon="mdi-alert-octagon"
+                                @click="injectHelpCommand"
+                            >
+                                Attention !
+                            </v-chip>
+                        </template>
+                    </v-tooltip>
+                </template>
+            </div>
+        </v-slide-y-transition>
+
+        <div class="cont-cmd-graph-navigaion" style="display: flex; position: relative;" ref="mainPanel">
+            <div
+                v-if="signals.length"
+                class="signal-layer"
+            >
+                <div
+                    v-for="sig in signals"
+                    :key="sig.id"
+                    class="signal-anim"
+                    :style="sig.style"
+                ></div>
+            </div>
             <!-- Command input section -->
             <div class="cont-cmd">
-                <v-text-field
-                    v-model="command"
-                    flat
-                    prefix="$"
-                    color="white"
-                    theme="dark"
-                    base-color="white"
-                    bg-color="#333"
-                    variant="solo"
-                    label="Entrez une commande (help, cd, ls, mkdir, touch, chmod...)"
-                    @keyup.enter="executeCommand()"
-                    @keyup="navigateTerminal($event)"
-                    @keydown.tab.prevent="autoCompleteCommand"
-                    placeholder="Par exemple : cd documents"
-                ></v-text-field>
+                <div class="command-input-wrapper" :class="{ 'hint-active': showCommandHint }" ref="commandInputWrapper">
+                    <v-text-field
+                        v-model="command"
+                        ref="commandInput"
+                        flat
+                        prefix="$"
+                        color="white"
+                        theme="dark"
+                        base-color="white"
+                        bg-color="#333"
+                        variant="solo"
+                        label="Entrez une commande (help, cd, ls, mkdir, touch, chmod...)"
+                        @focus="dismissCommandHint"
+                        @keyup.enter="executeCommand()"
+                        @keyup="handleInputKeyup($event)"
+                        @keydown.tab.prevent="autoCompleteCommand"
+                        placeholder="Par exemple : cd documents"
+                    ></v-text-field>
+                    <transition name="badge-unlock">
+                        <div
+                            v-if="showCommandHint"
+                            class="command-input-hint"
+                            @click="focusCommandInput"
+                        >
+                            <v-icon class="mr-1" size="18">mdi-lightning-bolt</v-icon>
+                            Entrez votre première commande en cliquant ici
+                            <span class="hint-arrow">↵</span>
+                        </div>
+                    </transition>
+                </div>
 
                 <v-slide-y-transition>
                     <v-card
@@ -546,17 +708,72 @@
         earnedBadgesCount() {
             return this.badges.filter((badge) => badge.earned).length;
         },
+        robotImage() {
+            return this.robotSprites[this.robotMood] || this.robotSprites.default;
+        },
+        robotSoundEnabled: {
+            get() {
+                const value = this.$store.state.robotSoundEnabled;
+                return typeof value === 'boolean' ? value : true;
+            },
+            set(enabled) {
+                this.$store.commit('setRobotSoundEnabled', !!enabled);
+            },
+        },
+        commandSuggestions() {
+            const term = (this.command || '').trim().split(' ')[0]?.toLowerCase() || '';
+            if (!term) {
+                return [];
+            }
+            return this.availableCommands
+                .filter((cmd) => cmd.startsWith(term))
+                .slice(0, 5);
+        },
+        availableCommands() {
+            return Object.keys(this.commandDescriptions)
+                .filter((cmd) => typeof cmd === 'string' && cmd.length > 0);
+        },
+        hasNoCommandMatch() {
+            const raw = (this.command || '').trim().toLowerCase();
+            const term = raw.split(' ')[0] || '';
+            if (!term) {
+                return false;
+            }
+            return !this.availableCommands.some((cmd) => cmd.startsWith(term));
+        },
+    },
+    watch: {
+        command(val) {
+            if (val && this.showCommandHint) {
+                this.showCommandHint = false;
+            }
+        },
     },
     data() {
+        const localTree = JSON.parse(JSON.stringify(folderTree));
+        const ensureFileContent = (node) => {
+            if (!node || typeof node !== 'object') {
+                return;
+            }
+            if (node.type === 'f' && typeof node.content !== 'string') {
+                node.content = '';
+            }
+            if (Array.isArray(node.children)) {
+                node.children.forEach(ensureFileContent);
+            }
+        };
+        ensureFileContent(localTree);
+
         return {
             root: null,
             pwd: "",
             command: '',
             output: '',
             currentNode: null, // Le dossier courant
-            folderTreeData: JSON.parse(JSON.stringify(folderTree)), // Copie locale de folderTree
+            folderTreeData: localTree, // Copie locale de folderTree
             commandHistory: [], // Historique des commandes
             cursorHistory: 0,
+            maxFileSizeBytes: 40 * 1024 * 1024,
             cDirect: {
                 from: null,
                 to: null,
@@ -586,49 +803,71 @@
                 feedbackType: '',
                 steps: [
                     {
+                        id: 'help',
+                        title: '1. Découvrir ton arsenal',
+                        description: 'Tape <code>help</code> pour afficher toutes les commandes disponibles dans ce poste d’entraînement.',
+                        success: 'Tu sais comment obtenir la liste des commandes.'
+                    },
+                    {
                         id: 'pwd',
-                        title: '1. Repérez votre position',
+                        title: '2. Repérez votre position',
                         description: 'Tape <code>pwd</code> pour afficher le chemin comme <strong>root &gt; home &gt; user</strong>.',
                         success: 'Tu sais maintenant où tu te trouves.'
                     },
                     {
                         id: 'ls',
-                        title: '2. Observer les environs',
+                        title: '3. Observer les environs',
                         description: 'Exécute <code>ls</code> (optionnellement avec <code>-l</code>) pour voir les dossiers disponibles.',
                         success: 'Cartographie du secteur réalisée.'
                     },
                     {
                         id: 'cd-documents',
-                        title: '3. Atteindre le dossier documents',
+                        title: '4. Atteindre le dossier documents',
                         description: 'Utilise <code>cd documents</code> (ou le chemin absolu) pour rejoindre le dossier <strong>documents</strong>.',
                         success: 'Bienvenue dans les documents.'
                     },
                     {
+                        id: 'cd-parent',
+                        title: '5. Remonter d’un niveau',
+                        description: 'Utilise <code>cd ..</code> ou <code>cd ../</code> pour revenir au dossier parent et apprendre à reculer d’un cran.',
+                        success: 'La marche arrière est maîtrisée.'
+                    },
+                    {
+                        id: 'cd-documents-return',
+                        title: '6. Retourner dans documents',
+                        description: 'Reviens maintenant dans <strong>documents</strong> avec <code>cd documents</code> pour poursuivre la mission.',
+                        success: 'De retour dans documents, prêt pour la suite.'
+                    },
+                    {
                         id: 'rm-archives',
-                        title: '4. Nettoyer les archives',
+                        title: '7. Nettoyer les archives',
                         description: 'Supprime l’ancien dossier <code>archives</code> avec <code>rm -r archives</code>.',
                         success: 'Archives nettoyées avec succès.'
                     },
                     {
                         id: 'mkdir-mission',
-                        title: '5. Préparer la mission',
+                        title: '8. Préparer la mission',
                         description: 'Crée un nouveau dossier <code>mission</code> (ex: <code>mkdir mission</code>) dans <strong>documents</strong>.',
                         success: 'Dossier mission créé.'
                     },
                     {
                         id: 'cd-mission',
-                        title: '6. Entrer dans mission',
+                        title: '9. Entrer dans mission',
                         description: 'Déplace-toi dans le dossier <code>mission</code>.',
                         success: 'Mission est maintenant ton dossier courant.'
                     },
                     {
                         id: 'touch-briefing',
-                        title: '7. Créer le briefing',
+                        title: '10. Créer le briefing',
                         description: 'Crée un fichier <code>briefing.txt</code> (ex: <code>touch briefing.txt</code>) dans <strong>mission</strong>.',
                         success: 'Briefing.txt est en place, mission accomplie !'
                     },
                 ],
             },
+            showCommandHint: true,
+            signals: [],
+            signalCounter: 0,
+            signalTimers: [],
             commandDescriptions: {
                 '': 'Information système',
                 help: 'Affiche la liste des commandes disponibles.',
@@ -637,19 +876,17 @@
                 echo: 'Renvoie du texte dans le terminal.',
                 cd: 'Change de répertoire.',
                 ls: 'Liste le contenu d\'un dossier.',
+                ll: 'Alias de ls -l : liste détaillée des fichiers.',
                 mkdir: 'Crée un nouveau dossier.',
                 touch: 'Crée ou met à jour un fichier.',
                 rm: 'Supprime un fichier ou un dossier.',
                 chmod: 'Modifie les permissions d\'un fichier ou dossier.',
+                cat: 'Affiche le contenu d\'un fichier (supporte la redirection).',
+                head: 'Affiche les premières lignes d\'un fichier (option -n).',
+                tail: 'Affiche les dernières lignes d\'un fichier (option -n).',
+                nano: 'Ouvre un éditeur pop-up pour modifier un fichier.',
             },
             showBadgePanel: false,
-            badgeSnackbar: {
-                show: false,
-                message: '',
-                icon: '',
-                description: '',
-                timeoutId: null,
-            },
             badges: [
                 { id: 'explorer', title: 'Explorateur', description: 'Visite 10 répertoires différents.', earned: false, icon: 'mdi-compass' },
                 { id: 'architecte', title: 'Architecte', description: 'Crée un dossier et un fichier.', earned: false, icon: 'mdi-home-analytics' },
@@ -665,6 +902,124 @@
                 manUses: 0,
                 tutorialCompleted: false,
             },
+            nanoEditor: {
+                show: false,
+                filePath: '',
+                content: '',
+                originalContent: '',
+                error: '',
+            },
+            robotMood: 'default',
+            robotResetTimer: null,
+            robotJumpTimer: null,
+            robotSprites: {
+                default: '/img/smile-robot.svg',
+                success: '/img/happy-love-robot.svg',
+                warning: '/img/unhappy-robot.svg',
+                error: '/img/error-robot.svg',
+                loving: '/img/full-love-robot.svg',
+            },
+            robotJumping: false,
+            robotFlicker: false,
+            robotFlickerTimer: null,
+            robotHovering: false,
+            badgeSnackbar: {
+                show: false,
+                message: '',
+                icon: '',
+                description: '',
+                timeoutId: null,
+            },
+            audioSources: {
+                talk: [],
+                warning: [],
+                error: [],
+                success: [],
+            },
+            audioTimers: {
+                talk: null,
+                warning: null,
+                error: null,
+                success: null,
+            },
+            robotMoodOverride: null,
+            robotTooltip: {
+                visible: false,
+                message: '',
+                greetingShown: false,
+                lastMessage: '',
+                auto: false,
+                timer: null,
+                type: 'default',
+                icon: '',
+            },
+            robotDialoguePool: [
+                'Je t\'observe, courage.',
+                'Continue à apprendre, tu te débrouilles bien.',
+                'Chaque commande compte, même les petites.',
+                'Les archives n\'ont qu\'à bien se tenir.',
+                'Un terminal heureux est un terminal utilisé.',
+                'La précision est ta meilleure alliée.',
+                'Tu vas devenir un maître du shell.',
+                'Une étape à la fois, ça avance.',
+                'J\'adore quand tu utilises pwd 📍.',
+                'Les dossiers tremblent devant toi.',
+                'On respire, on tape, on réussit.',
+                'Tu as déjà parcouru un long chemin.',
+                'Je garde un œil bienveillant sur toi 👀.',
+                'Les erreurs sont juste des indices déguisés.',
+                'Quel style dans tes commandes !',
+                'La mission avance, ne lâche rien.',
+                'Tu fais ça comme un(e) pro.',
+                'Ton futur toi te dira merci.',
+                'Les neurones chauffent, j\'aime ça 🔥.',
+                'Linux n\'a qu\'à bien se tenir.',
+                'Laisse ta curiosité te guider.',
+                'Une pause café ? Non, une commande !',
+                'Chaque cd te rapproche de la victoire.',
+                'Tu fais danser les répertoires 💃.',
+                'Garde le cap, le terminal est avec toi.',
+                'La patience est ta superpuissance.',
+                'Même les octets te regardent avec respect.',
+                'Tu tapes vite, mais tu apprends encore plus vite ⚡.',
+                'Ton clavier est ton sabre laser.',
+                'Un shell bien dompté, c\'est la liberté.',
+                'On dirait que tu connais déjà la voie.',
+                'Les permissions t\'obéissent 👑.',
+                'Chaque réussite mérite un petit sourire.'
+            ],
+            robotDialogueIconPool: [
+                'mdi-robot-excited',
+                'mdi-emoticon-happy-outline',
+                'mdi-star-face',
+                'mdi-flash',
+                'mdi-rocket',
+                'mdi-owl',
+                'mdi-lightbulb-on-outline',
+                'mdi-firework',
+                'mdi-school-outline',
+                'mdi-hand-okay'
+            ],
+            robotErrorEncouragements: [
+                'Courage, tu vas y arriver !',
+                'Respire et réessaie calmement.',
+                'Les erreurs font aussi partie de l\'apprentissage.',
+                'Chaque tentative te rapproche de la solution.',
+                'On corrige et on continue.',
+                'Un petit ajustement et ça passera.',
+                'Ne lâche rien, tu es sur la bonne voie.',
+                'Tu peux le faire, j\'en suis sûr.',
+                'Analyse, corrige, et fonce.',
+                'Même les maîtres du shell se trompent parfois.'
+            ],
+            treeSvg: null,
+            robotSoundToast: {
+                visible: false,
+                message: '',
+                timer: null,
+            },
+            activeAudios: [],
+            talkLoopAudio: null,
         };
     },
     mounted() {
@@ -672,10 +1027,38 @@
         this.createOutputAnimate()
         this.loadCommandHistory();
         this.loadBadgeState();
+        this.loadAudioEffects();
     },
     beforeUnmount() {
+        this.signalTimers.forEach((timer) => clearTimeout(timer));
+        this.signalTimers = [];
+        if (this.robotResetTimer) {
+            clearTimeout(this.robotResetTimer);
+            this.robotResetTimer = null;
+        }
+        if (this.robotJumpTimer) {
+            clearTimeout(this.robotJumpTimer);
+            this.robotJumpTimer = null;
+        }
+        if (this.robotFlickerTimer) {
+            clearTimeout(this.robotFlickerTimer);
+            this.robotFlickerTimer = null;
+        }
+        this.clearRobotTooltipTimer();
+        if (this.robotSoundToast.timer) {
+            clearTimeout(this.robotSoundToast.timer);
+            this.robotSoundToast.timer = null;
+        }
+        this.stopAllActiveAudios();
+        Object.keys(this.audioTimers).forEach((key) => {
+            if (this.audioTimers[key]) {
+                clearTimeout(this.audioTimers[key]);
+                this.audioTimers[key] = null;
+            }
+        });
         if (this.badgeSnackbar.timeoutId) {
             clearTimeout(this.badgeSnackbar.timeoutId);
+            this.badgeSnackbar.timeoutId = null;
         }
     },
     methods: {
@@ -852,6 +1235,80 @@
             binSVal = otherR.map(v => v != '-' ? "1" : "0").reverse().join("")
             this.chmodInfos.data.other.push({title: `${otherR.join('')} = ${binSVal.split('').map((v, i) => (2**i)*parseInt(v)).reverse().join(" + ")} = ${parseInt(binSVal.split("").reverse().join("").toString(), 2).toString()}`})
         },
+        focusCommandInput() {
+            if (this.$refs.commandInput?.focus) {
+                this.$refs.commandInput.focus();
+            }
+        },
+        dismissCommandHint() {
+            if (this.showCommandHint) {
+                this.showCommandHint = false;
+            }
+        },
+        handleInputKeyup(event) {
+            this.dismissCommandHint();
+            this.navigateTerminal(event);
+        },
+        selectCommandSuggestion(cmd) {
+            this.command = `${cmd} `;
+            this.dismissCommandHint();
+            this.$nextTick(() => this.focusCommandInput());
+        },
+        injectHelpCommand() {
+            this.command = 'help ';
+            this.dismissCommandHint();
+            this.$nextTick(() => this.focusCommandInput());
+        },
+        refreshTreeView(source = null, options = {}) {
+            if (typeof this.updateTree !== 'function') {
+                return;
+            }
+            this.updateTree(source || this.currentNode || this.root);
+            if (options.signal !== false) {
+                this.emitTreeSignal();
+            }
+        },
+        emitTreeSignal() {
+            if (
+                !this.$refs.mainPanel ||
+                !this.$refs.commandInputWrapper ||
+                !this.$refs.tree
+            ) {
+                return;
+            }
+            const panelRect = this.$refs.mainPanel.getBoundingClientRect();
+            const startRect = this.$refs.commandInputWrapper.getBoundingClientRect();
+            const treeTarget = this.$refs.tree.querySelector('svg') || this.$refs.tree;
+            if (!startRect || !treeTarget) {
+                return;
+            }
+            const endRect = treeTarget.getBoundingClientRect();
+            const startX = startRect.left + startRect.width / 1.2 - panelRect.left;
+            const startY = startRect.top - panelRect.top;
+            const endX = endRect.left + endRect.width / 2 - panelRect.left;
+            const endY = endRect.top + 80 - panelRect.top;
+
+            // const offsets = [-5, 0, 20, 10, 60, 40, 30];
+            //randomeize offsets value between -5 and 90
+            const offsets = Array.from({ length: 7 }, () => Math.floor(Math.random() * 95) - 5);
+
+            // offsets.sort(() => Math.random() - 0.5);
+            offsets.forEach((offset, index) => {
+                const id = ++this.signalCounter;
+                const style = {
+                    left: `${startX}px`,
+                    top: `${startY + offset}px`,
+                    '--signal-end-x': `${endX - startX}px`,
+                    '--signal-end-y': `${endY - startY - offset * 0.2}px`,
+                    animationDelay: `${index * 80}ms`,
+                };
+                this.signals.push({ id, style });
+                const timer = setTimeout(() => {
+                    this.signals = this.signals.filter((sig) => sig.id !== id);
+                }, 850 + index * 40);
+                this.signalTimers.push(timer);
+            });
+        },
         createOutputAnimate(){
             const width = 500;
             const height = 110;
@@ -977,6 +1434,7 @@
                 .attr('height', height)
                 .attr('viewBox', [-100, -100, width + 100, height + 100])
                 .style('overflow', 'visible');
+            this.treeSvg = svg;
             
             const tooltip = d3.select("body")
             .append("div")
@@ -991,7 +1449,7 @@
             if (!this.currentNode) {
                 this.currentNode = root;
                 setTimeout(function(){
-                    this.changeDirectory("home/user")
+                    this.changeDirectory("home/user", { silent: true })
                     this.cDirect.from = null;
                     this.createOutputAnimate()
                 }.bind(this), 750)
@@ -999,7 +1457,7 @@
             else {
                 this.currentNode = root;
                 setTimeout(function(){
-                    this.changeDirectory(this.pwd)
+                    this.changeDirectory(this.pwd, { silent: true })
                     // this.cDirect.from = null;
                     // this.createOutputAnimate()
                 }.bind(this), 50)
@@ -1011,6 +1469,8 @@
                     i = 0;
                 
                 const treeLayout = d3.tree().size([height, width - 120]);
+                console.log("this.root:", this.root);
+                
                 treeLayout(this.root);
                 const nodes = this.root.descendants();
                 const node = svg.selectAll('g.node').data(nodes, (d) => d.id || (d.id = ++i));
@@ -1259,11 +1719,9 @@
 
             for (let seg of segments) {
                 if (seg === ".") {
-                    // '.' signifie le répertoire courant, donc on ne change rien.
                     continue;
                 } 
                 else if (seg === "..") {
-                    // '..' signifie le répertoire parent (s'il existe)
                     if (current.parent) {
                         current = current.parent;
                     } 
@@ -1390,7 +1848,7 @@
             const cmd = args[0];
 
             if ( args.length === 1 ) {// Autocomplétion de la commande
-                const commands = ['help', 'man', 'pwd', 'echo', 'cd', 'ls', 'mkdir', 'touch', 'rm', 'chmod'];
+                const commands = this.availableCommands;
 
                 const matches = commands.filter(c => c.startsWith(cmd));
 
@@ -1495,11 +1953,15 @@
             this.tutorial.active = false;
             this.tutorial.feedback = 'Mission accomplie, continue librement !';
             this.tutorial.feedbackType = 'success';
-            this.tutorial.showSuccess = true;
+            this.tutorial.showSuccess = false;
             this.stats.tutorialCompleted = true;
             this.checkBadges();
+            this.announceRobot('🚀 Mission accomplie ! Tu peux poursuivre librement 🚀', {
+                duration: 4500,
+                mood: 'success',
+            });
         },
-        handleTutorialProgress(cmd, params) {
+        handleTutorialProgress(cmd, params, commandState = '') {
             if (!this.tutorial.active || this.tutorial.showIntro || this.tutorial.completed) {
                 return;
             }
@@ -1522,6 +1984,9 @@
             let success = false;
 
             switch (step.id) {
+                case 'help':
+                    success = normalizedCmd === 'help';
+                    break;
                 case 'pwd':
                     success = normalizedCmd === 'pwd';
                     break;
@@ -1529,6 +1994,16 @@
                     success = normalizedCmd === 'ls';
                     break;
                 case 'cd-documents':
+                    success = normalizedCmd === 'cd' && currentPath.endsWith('/home/user/documents');
+                    break;
+                case 'cd-parent': {
+                    const targetParam = paramsList[0] ? paramsList[0].replace(/\/+$/, '') : '';
+                    success = normalizedCmd === 'cd'
+                        && ['..', '../'].some((pattern) => pattern.replace(/\/+$/, '') === targetParam)
+                        && currentPath.endsWith('/home/user');
+                    break;
+                }
+                case 'cd-documents-return':
                     success = normalizedCmd === 'cd' && currentPath.endsWith('/home/user/documents');
                     break;
                 case 'rm-archives':
@@ -1550,7 +2025,16 @@
             if (success) {
                 this.tutorial.feedback = step.success || 'Étape validée.';
                 this.tutorial.feedbackType = 'success';
+                if (step.success) {
+                    this.announceRobot(step.success, {
+                        duration: 3200,
+                        mood: 'success',
+                        type: 'success',
+                        icon: 'mdi-check-circle',
+                    });
+                }
                 this.tutorial.currentStep += 1;
+                this.playSoundEffect('success');
                 if (this.tutorial.currentStep >= this.tutorial.steps.length) {
                     this.finishTutorial();
                 }
@@ -1570,6 +2054,18 @@
                 });
                 this.tutorial.feedback = errorMessage || 'Cette commande ne valide pas encore cette étape. Réessaie en suivant l\'indice ci-dessus.';
                 this.tutorial.feedbackType = 'hint';
+                const soundType = commandState === 'valid' ? 'warning' : 'error';
+                this.playSoundEffect(soundType);
+                if (commandState === 'valid') {
+                    this.robotMoodOverride = 'warning';
+                    const warningText = errorMessage || 'Cette commande ne valide pas encore cette étape.';
+                    this.announceRobot(warningText, {
+                        duration: 3600,
+                        mood: 'warning',
+                        type: 'warning',
+                        icon: 'mdi-alert-circle-outline',
+                    });
+                }
             }
         },
         getTutorialErrorMessage(step, context) {
@@ -1589,6 +2085,11 @@
             const firstParam = paramsList[0] || '';
 
             switch (step.id) {
+                case 'help':
+                    if (normalizedCmd !== 'help') {
+                        return 'Avant de foncer, tape `help` pour découvrir toutes les commandes disponibles.';
+                    }
+                    break;
                 case 'pwd':
                     if (normalizedCmd !== 'pwd') {
                         return 'Cette étape vérifie ta position : tape `pwd` pour afficher le chemin courant.';
@@ -1610,6 +2111,28 @@
                         return `Cette étape attend le dossier 'documents', pas '${firstParam}'.`;
                     }
                     return `Tu es encore sur ${currentPath || '/'}. Vise /home/user/documents.`;
+                case 'cd-parent':
+                    if (normalizedCmd !== 'cd') {
+                        return 'Utilise `cd` pour remonter d’un niveau.';
+                    }
+                    if (!paramsList.length) {
+                        return 'Ajoute `..` (ou `../`) après `cd` pour viser le dossier parent : `cd ..`.';
+                    }
+                    if (firstParam.replace(/\/+$/, '') !== '..') {
+                        return 'Cette étape vérifie l’utilisation de `cd ..` (ou `cd ../`). Réessaie avec ce raccourci.';
+                    }
+                    return 'Tu devrais voir /home/user comme dossier courant après `cd ..`.';
+                case 'cd-documents-return':
+                    if (normalizedCmd !== 'cd') {
+                        return 'Après avoir reculé, reviens dans `documents` avec `cd`.';
+                    }
+                    if (!paramsList.length) {
+                        return 'Précise la destination : `cd documents`.';
+                    }
+                    if (!mentions('documents')) {
+                        return `Cette étape attend un retour vers 'documents', pas '${firstParam}'.`;
+                    }
+                    return 'On t’attend dans /home/user/documents avant de reprendre l’opération.';
                 case 'rm-archives':
                     if (normalizedCmd !== 'rm') {
                         return 'On attend la suppression du dossier `archives` avec `rm`.';
@@ -1781,6 +2304,9 @@
                 this.commandHistory = [];
                 this.$store.commit('setCommandHistory', { history: [], timestamp: null });
             }
+            if (this.commandHistory.length > 0) {
+                this.showCommandHint = false;
+            }
         },
         loadBadgeState() {
             const badgeState = this.$store.state.badgeState || {};
@@ -1820,34 +2346,50 @@
         },
         executeCommand() {
             this.cursorHistory = 0;
-            const args = this.command.trim().split(' ');
+            const issuedCommand = this.command;
+            const trimmedInput = (issuedCommand || '').trim();
+            const { mainPart, redirectionPart } = this.extractRedirection(trimmedInput);
+            const args = this.tokenizeArguments(mainPart);
+            const redirectionParse = this.parseRedirectionPart(redirectionPart);
 
-            const cmd = args[0];
+            if (redirectionParse?.error) {
+                this.output = redirectionParse.error;
+                this.pushCommandToHistory(issuedCommand, 'error', this.output);
+                this.command = '';
+                return;
+            }
+
+            let redirection = redirectionParse || null;
+
+            if (redirection && !redirection.target) {
+                this.output = 'Redirection invalide : aucun fichier cible n\'a été indiqué.';
+                this.pushCommandToHistory(issuedCommand, 'error', this.output);
+                this.command = '';
+                return;
+            }
+
+            const cmd = args[0] || '';
             const param = args.slice(1);
             
             let state = 'valid';
+            let redirectionPayload = null;
+            let redirectionSideOutput = '';
 
             this.cDirect.from = null;
             this.chmodInfos.data.user = [];
             this.createOutputAnimate();
 
+            if (redirection && !cmd) {
+                this.output = 'Redirection impossible : aucune commande à exécuter.';
+                this.pushCommandToHistory(issuedCommand, 'error', this.output);
+                this.command = '';
+                return;
+            }
+
             if (param.includes('-h')) {
                 this.output = this.getHelp(cmd);
-                
-                const tooltip = this.buildCommandTooltip(this.command, state, this.output);
-                this.commandHistory.push({ 
-                    command: this.command, 
-                    state, 
-                    output: this.output,
-                    tooltip,
-                });
-                
+                this.pushCommandToHistory(issuedCommand, state, this.output);
                 this.command = '';
-                
-                setTimeout(()=>{
-                    $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
-                }, 50)
-                
                 return;
             }
 
@@ -1869,13 +2411,41 @@
                     this.pathWayDirectory();
                     break;
                 case 'echo':
-                    this.echo(param);
+                    redirectionPayload = this.echo(param);
+                    break;
+                case 'cat': {
+                    const catResult = this.catCommand(param);
+                    state = catResult.state;
+                    redirectionPayload = catResult.stdout;
+                    redirectionSideOutput = catResult.stderr || '';
+                    break;
+                }
+                case 'head': {
+                    const headResult = this.headCommand(param);
+                    state = headResult.state;
+                    redirectionPayload = headResult.stdout;
+                    redirectionSideOutput = headResult.stderr || '';
+                    break;
+                }
+                case 'tail': {
+                    const tailResult = this.tailCommand(param);
+                    state = tailResult.state;
+                    redirectionPayload = tailResult.stdout;
+                    redirectionSideOutput = tailResult.stderr || '';
+                    break;
+                }
+                case 'nano':
+                    state = this.handleNanoCommand(param);
+                    redirectionPayload = '';
                     break;
                 case 'cd':
                     state = this.changeDirectory(param);
                     break;
                 case 'ls':
                     this.listDirectory(param);
+                    break;
+                case 'll':
+                    this.listDirectory(['-l', ...param]);
                     break;
                 case 'mkdir':
                     state = this.makeDirectory(param);
@@ -1895,23 +2465,608 @@
                     state = 'error';
             }
 
-            this.handleTutorialProgress(cmd, param);
+            const beforeRedirectionOutput = this.output;
+            if (redirection && state !== 'error') {
+                const payload = typeof redirectionPayload === 'string'
+                    ? redirectionPayload
+                    : (typeof this.output === 'string' ? this.output : '');
+                const redirectionState = this.applyOutputRedirection(redirection, payload);
+                if (redirectionState === 'error') {
+                    state = 'error';
+                } else if (state !== 'valid') {
+                    const retained = redirectionSideOutput || beforeRedirectionOutput;
+                    this.output = retained
+                        ? `${retained}\n${this.output}`
+                        : this.output;
+                } else {
+                    state = redirectionState;
+                }
+            }
 
-            const tooltip = this.buildCommandTooltip(this.command, state, this.output);
-            const historyOutput = state != 'error' ? this.output : `<span style="color: #fe4444">${this.output}<span/>`;
-            this.commandHistory.push({ 
-                    command: this.command, 
-                    state,
-                    output: historyOutput,
-                    tooltip,
-                });
-            this.saveCommandHistory();
-            
-            setTimeout(()=>{
-                $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
-            }, 50)
-           
+            this.handleTutorialProgress(cmd, param, state);
+
+            this.pushCommandToHistory(issuedCommand, state, this.output);
             this.command = '';
+        },
+        pushCommandToHistory(commandText, state, output) {
+            const moodToApply = this.robotMoodOverride || state;
+            this.robotMoodOverride = null;
+            this.updateRobotMood(moodToApply);
+            if (state === 'error') {
+                this.playSoundEffect('error');
+                const errorMessage = `Erreur détectée. ${this.getRandomErrorEncouragement()}`;
+                this.announceRobot(errorMessage, {
+                    duration: 2400,
+                    mood: 'error',
+                    type: 'error',
+                    icon: 'mdi-alert-octagon',
+                });
+            } else if (state === 'warning') {
+                this.playSoundEffect('warning');
+            }
+            const tooltip = this.buildCommandTooltip(commandText, state, output);
+            const historyOutput = state !== 'error' ? output : `<span style="color: #fe4444">${output}<span/>`;
+            this.commandHistory.push({
+                command: commandText,
+                state,
+                output: historyOutput,
+                tooltip,
+            });
+            this.saveCommandHistory();
+            setTimeout(() => {
+                $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
+            }, 50);
+        },
+        clearRobotMoodTimers() {
+            if (this.robotResetTimer) {
+                clearTimeout(this.robotResetTimer);
+                this.robotResetTimer = null;
+            }
+            if (this.robotJumpTimer) {
+                clearTimeout(this.robotJumpTimer);
+                this.robotJumpTimer = null;
+            }
+            if (this.robotFlickerTimer) {
+                clearTimeout(this.robotFlickerTimer);
+                this.robotFlickerTimer = null;
+            }
+        },
+        updateRobotMood(state) {
+            if (this.robotHovering && state !== 'loving') {
+                return;
+            }
+            this.clearRobotMoodTimers();
+            if (this.robotHovering && state !== 'loving') {
+                return;
+            }
+            if (this.robotResetTimer) {
+                clearTimeout(this.robotResetTimer);
+                this.robotResetTimer = null;
+            }
+            if (this.robotJumpTimer) {
+                clearTimeout(this.robotJumpTimer);
+                this.robotJumpTimer = null;
+            }
+            if (this.robotFlickerTimer) {
+                clearTimeout(this.robotFlickerTimer);
+                this.robotFlickerTimer = null;
+            }
+
+            switch (state) {
+                case 'error':
+                    this.robotMood = 'error';
+                    break;
+                case 'warning':
+                    this.robotMood = 'warning';
+                    break;
+                case 'valid':
+                    this.robotMood = 'success';
+                    break;
+                case 'loving':
+                    this.robotMood = 'loving';
+                    break;
+                default:
+                    this.robotMood = 'default';
+                    break;
+            }
+            this.triggerRobotJump();
+            this.robotResetTimer = setTimeout(() => {
+                this.robotMood = 'default';
+                this.robotResetTimer = null;
+                this.triggerRobotFlicker();
+            }, 3000);
+        },
+        triggerRobotJump() {
+            this.robotJumping = false;
+            this.$nextTick(() => {
+                this.robotJumping = true;
+                this.robotJumpTimer = setTimeout(() => {
+                    this.robotJumping = false;
+                    this.robotJumpTimer = null;
+                }, 700);
+            });
+        },
+        triggerRobotFlicker() {
+            if (this.robotFlickerTimer) {
+                clearTimeout(this.robotFlickerTimer);
+                this.robotFlickerTimer = null;
+            }
+            this.robotFlicker = false;
+            this.$nextTick(() => {
+                this.robotFlicker = true;
+                this.robotFlickerTimer = setTimeout(() => {
+                    this.robotFlicker = false;
+                    this.robotFlickerTimer = null;
+                }, 800);
+            });
+        },
+        clearRobotTooltipTimer() {
+            if (this.robotTooltip.timer) {
+                clearTimeout(this.robotTooltip.timer);
+                this.robotTooltip.timer = null;
+            }
+        },
+        showRobotTooltipMessage(message, { duration = 2800, auto = false, type = 'default', icon = '' } = {}) {
+            this.clearRobotTooltipTimer();
+            this.robotTooltip.message = message;
+            this.robotTooltip.visible = true;
+            this.robotTooltip.auto = auto;
+            this.robotTooltip.type = type || 'default';
+            this.robotTooltip.icon = icon || '';
+            if (auto) {
+                this.robotTooltip.timer = setTimeout(() => {
+                    if (this.robotTooltip.auto) {
+                        this.robotTooltip.visible = false;
+                        this.robotTooltip.auto = false;
+                    }
+                    this.robotTooltip.timer = null;
+                }, duration);
+            }
+        },
+        announceRobot(message, { duration = 3200, mood = null, type = 'default', icon = '' } = {}) {
+            if (mood) {
+                this.updateRobotMood(mood);
+            }
+            this.showRobotTooltipMessage(message, { duration, auto: true, type, icon });
+        },
+        buildTreePathNodes(startNode, endNode) {
+            if (!startNode || !endNode) {
+                return [];
+            }
+            if (startNode === endNode) {
+                return [startNode];
+            }
+            const startAncestors = [];
+            let cursor = startNode;
+            while (cursor) {
+                startAncestors.push(cursor);
+                cursor = cursor.parent;
+            }
+            const endAncestorSet = new Set();
+            cursor = endNode;
+            while (cursor) {
+                endAncestorSet.add(cursor);
+                cursor = cursor.parent;
+            }
+            let lca = null;
+            for (const candidate of startAncestors) {
+                if (endAncestorSet.has(candidate)) {
+                    lca = candidate;
+                    break;
+                }
+            }
+            if (!lca) {
+                return [];
+            }
+            const path = [];
+            cursor = startNode;
+            while (cursor && cursor !== lca) {
+                path.push(cursor);
+                cursor = cursor.parent;
+            }
+            path.push(lca);
+            const downward = [];
+            cursor = endNode;
+            while (cursor && cursor !== lca) {
+                downward.push(cursor);
+                cursor = cursor.parent;
+            }
+            while (downward.length) {
+                const node = downward.pop();
+                if (node !== lca) {
+                    path.push(node);
+                }
+            }
+            return path;
+        },
+        animateTreePath(fromNode, toNode) {
+            if (!this.treeSvg || !fromNode || !toNode) {
+                return;
+            }
+            const nodes = this.buildTreePathNodes(fromNode, toNode);
+            if (!nodes.length) {
+                return;
+            }
+            const svg = this.treeSvg;
+            svg.selectAll('.cd-path-overlay').remove();
+
+            const points = nodes.map((node) => ({
+                x: node.y,
+                y: node.x,
+            }));
+
+            if (points.length === 1) {
+                svg.append('circle')
+                    .attr('class', 'cd-path-overlay')
+                    .attr('cx', points[0].x)
+                    .attr('cy', points[0].y)
+                    .attr('r', 6)
+                    .attr('fill', '#f7b801')
+                    .attr('opacity', 0.95)
+                    .transition()
+                    .duration(800)
+                    .attr('r', 20)
+                    .attr('opacity', 0)
+                    .remove();
+                return;
+            }
+
+            const lineGenerator = d3.line()
+                .x((d) => d.x)
+                .y((d) => d.y)
+                .curve(d3.curveMonotoneX);
+
+            const path = svg.append('path')
+                .attr('class', 'cd-path-overlay')
+                .attr('d', lineGenerator(points))
+                .attr('fill', 'none')
+                .attr('stroke', '#404bee')
+                .attr('stroke-width', 3)
+                .attr('stroke-dasharray', '6,4')
+                .attr('opacity', 0.85);
+
+            const pathEl = path.node();
+            const totalLength = pathEl.getTotalLength();
+
+            const marker = svg.append('circle')
+                .attr('class', 'cd-path-overlay')
+                .attr('r', 15)
+                .attr('fill', '#279CF5')
+                .attr('stroke', '#333')
+                .attr('stroke-width', 5.5)
+                .attr('opacity', 0.5)
+
+            marker.transition()
+                .duration(2000)
+                .ease(d3.easeCubicInOut)
+                .attrTween('transform', () => (t) => {
+                    const point = pathEl.getPointAtLength(t * totalLength);
+                    return `translate(${point.x}, ${point.y})`;
+                })
+                .on('end', () => {
+                    marker.transition().duration(300).attr('opacity', 0).remove();
+                });
+
+            path.transition()
+                .delay(2000)
+                .duration(400)
+                .attr('opacity', 0)
+                .remove();
+        },
+        stopAllActiveAudios() {
+            this.stopTalkSound();
+            if (this.activeAudios && this.activeAudios.length) {
+                this.activeAudios.forEach((audio) => {
+                    try {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    } catch (e) {
+                        // ignore
+                    }
+                });
+                this.activeAudios = [];
+            }
+            Object.keys(this.audioTimers || {}).forEach((key) => {
+                if (this.audioTimers[key]) {
+                    clearTimeout(this.audioTimers[key]);
+                    this.audioTimers[key] = null;
+                }
+            });
+        },
+        loadAudioEffects() {
+            if (typeof Audio === 'undefined') {
+                return;
+            }
+            this.audioSources = {
+                talk: [
+                    '/son/robot-talk-1.mp3',
+                    '/son/robot-talk-2.mp3',
+                    '/son/robot-talk-3.mp3',
+                    '/son/robot-talk-birds.mp3',
+                    '/son/robot-talk-r2d2.mp3',
+                    // '/son/robo-talk-creapy.mp3',
+                ],
+                warning: [
+                    '/son/robot-warning.mp3',
+                    '/son/robot-warning-8-bit-1.mp3',
+                ],
+                error: [
+                    '/son/robot-error-1.mp3',
+                ],
+                success: [
+                    '/son/robot-succes-1.mp3',
+                    '/son/robot-success-winlevel.mp3',
+                ],
+            };
+        },
+        startTalkSound() {
+            if (!this.robotSoundEnabled) {
+                return;
+            }
+            if (this.talkLoopAudio) {
+                return;
+            }
+            const talks = this.audioSources?.talk || [];
+            if (!talks.length) {
+                return;
+            }
+            const src = talks[Math.floor(Math.random() * talks.length)];
+            try {
+                const audio = new Audio(src);
+                audio.loop = true;
+                const playPromise = audio.play();
+                if (playPromise?.catch) {
+                    playPromise.catch(() => {});
+                }
+                this.talkLoopAudio = audio;
+            } catch (error) {
+                this.talkLoopAudio = null;
+            }
+        },
+        stopTalkSound() {
+            if (this.talkLoopAudio) {
+                try {
+                    this.talkLoopAudio.pause();
+                    this.talkLoopAudio.currentTime = 0;
+                } catch (e) {
+                    // ignore
+                }
+                this.talkLoopAudio = null;
+            }
+        },
+        playSoundEffect(type) {
+            if (!this.robotSoundEnabled) {
+                return;
+            }
+            const sources = this.audioSources[type] || [];
+            if (!sources.length) {
+                return;
+            }
+            const src = sources[Math.floor(Math.random() * sources.length)];
+            let audio;
+            try {
+                audio = new Audio(src);
+            } catch (error) {
+                return;
+            }
+            const stopAudio = () => {
+                try {
+                    audio.pause();
+                    audio.currentTime = 0;
+                } catch (e) {
+                    // ignore
+                }
+                this.activeAudios = this.activeAudios.filter((entry) => entry !== audio);
+            };
+            audio.addEventListener('ended', stopAudio);
+            const playPromise = audio.play();
+            if (playPromise?.catch) {
+                playPromise.catch(() => {});
+            }
+            this.activeAudios.push(audio);
+            const durationHints = {
+                talk: 2500,
+                warning: 2600,
+                error: 2800,
+                success: 3200,
+            };
+            const timeout = durationHints[type] || 2800;
+            if (this.audioTimers[type]) {
+                clearTimeout(this.audioTimers[type]);
+            }
+            this.audioTimers[type] = setTimeout(() => {
+                stopAudio();
+                this.audioTimers[type] = null;
+            }, timeout);
+        },
+        toggleRobotSound() {
+            const nextState = !this.robotSoundEnabled;
+            this.robotSoundEnabled = nextState;
+            if (!nextState) {
+                this.stopTalkSound();
+                this.stopAllActiveAudios();
+            }
+            this.showRobotSoundToast(nextState ? 'Son activé 🔊' : 'Son coupé 🔇');
+        },
+        showRobotSoundToast(message) {
+            if (this.robotSoundToast.timer) {
+                clearTimeout(this.robotSoundToast.timer);
+                this.robotSoundToast.timer = null;
+            }
+            this.robotSoundToast.message = message;
+            this.robotSoundToast.visible = true;
+            this.robotSoundToast.timer = setTimeout(() => {
+                this.robotSoundToast.visible = false;
+                this.robotSoundToast.timer = null;
+            }, 1500);
+        },
+        handleRobotHover() {
+            this.robotHovering = true;
+            this.clearRobotMoodTimers();
+            this.robotJumping = false;
+            this.robotFlicker = false;
+            this.robotMood = 'loving';
+            const dialogue = this.getRobotDialogue();
+            const icon = this.getRobotDialogueIcon();
+            this.showRobotTooltipMessage(dialogue, {
+                auto: false,
+                type: 'default',
+                icon,
+            });
+            this.startTalkSound();
+        },
+        handleRobotLeave() {
+            this.robotHovering = false;
+            if (!this.robotTooltip.auto) {
+                this.robotTooltip.visible = false;
+            }
+            this.robotTooltip.auto = false;
+            this.clearRobotTooltipTimer();
+            this.robotMood = 'default';
+            this.triggerRobotFlicker();
+            this.stopTalkSound();
+        },
+        getRobotDialogue() {
+            if (!this.robotTooltip.greetingShown) {
+                this.robotTooltip.greetingShown = true;
+                this.robotTooltip.lastMessage = 'Salut !';
+                return '👋 Salut ! Je suis ECHO, ton assistant virtuel. Tu peux couper ou activer mon son 🔊 en cliquant sur ma tête.';
+            }
+            let message = this.robotTooltip.lastMessage;
+            const pool = this.robotDialoguePool;
+            if (!pool.length) {
+                return message;
+            }
+            while (message === this.robotTooltip.lastMessage && pool.length > 1) {
+                const idx = Math.floor(Math.random() * pool.length);
+                message = pool[idx];
+            }
+            this.robotTooltip.lastMessage = message;
+            return message;
+        },
+        getRobotDialogueIcon() {
+            const pool = this.robotDialogueIconPool || [];
+            if (!pool.length) {
+                return 'mdi-robot';
+            }
+            const idx = Math.floor(Math.random() * pool.length);
+            return pool[idx];
+        },
+        getRandomErrorEncouragement() {
+            const pool = this.robotErrorEncouragements || [];
+            if (!pool.length) {
+                return 'Tu vas y arriver.';
+            }
+            const idx = Math.floor(Math.random() * pool.length);
+            return pool[idx];
+        },
+        extractRedirection(input = '') {
+            let inDouble = false;
+            let inSingle = false;
+            let escape = false;
+            for (let i = 0; i < input.length; i++) {
+                const char = input[i];
+                if (escape) {
+                    escape = false;
+                    continue;
+                }
+                if (char === '\\') {
+                    escape = true;
+                    continue;
+                }
+                if (char === '"' && !inSingle) {
+                    inDouble = !inDouble;
+                    continue;
+                }
+                if (char === '\'' && !inDouble) {
+                    inSingle = !inSingle;
+                    continue;
+                }
+                if (char === '>' && !inDouble && !inSingle) {
+                    return {
+                        mainPart: input.slice(0, i).trimEnd(),
+                        redirectionPart: input.slice(i).trimStart(),
+                    };
+                }
+            }
+            return { mainPart: input, redirectionPart: '' };
+        },
+        tokenizeArguments(input = '') {
+            const tokens = [];
+            let buffer = '';
+            let inDouble = false;
+            let inSingle = false;
+            for (let i = 0; i < input.length; i++) {
+                const char = input[i];
+                if (char === '\\') {
+                    const next = input[i + 1];
+                    if (next === undefined) {
+                        buffer += '\\';
+                        continue;
+                    }
+                    if (!inSingle && next === '"') {
+                        buffer += '"';
+                        i += 1;
+                        continue;
+                    }
+                    if (!inDouble && next === "'") {
+                        buffer += '\'';
+                        i += 1;
+                        continue;
+                    }
+                    buffer += '\\';
+                    continue;
+                }
+                if (char === '"' && !inSingle) {
+                    inDouble = !inDouble;
+                    continue;
+                }
+                if (char === '\'' && !inDouble) {
+                    inSingle = !inSingle;
+                    continue;
+                }
+                if (!inDouble && !inSingle && /\s/.test(char)) {
+                    if (buffer.length) {
+                        tokens.push(buffer);
+                        buffer = '';
+                    }
+                    continue;
+                }
+                buffer += char;
+            }
+            if (buffer.length) {
+                tokens.push(buffer);
+            }
+            return tokens;
+        },
+        parseRedirectionPart(part = '') {
+            if (!part) {
+                return null;
+            }
+            const trimmed = part.trim();
+            if (!trimmed.startsWith('>')) {
+                return null;
+            }
+            let append = false;
+            let remainder = trimmed;
+            if (remainder.startsWith('>>')) {
+                append = true;
+                remainder = remainder.slice(2);
+            } else {
+                remainder = remainder.slice(1);
+            }
+            remainder = remainder.trim();
+            if (!remainder) {
+                return { error: 'Redirection invalide : aucun fichier cible n\'a été indiqué.' };
+            }
+            const targets = this.tokenizeArguments(remainder);
+            if (!targets.length) {
+                return { error: 'Redirection invalide : aucun fichier cible n\'a été indiqué.' };
+            }
+            if (targets.length > 1) {
+                return { error: 'Redirection invalide : une seule cible est autorisée.' };
+            }
+            return { append, target: targets[0] };
         },
         getHelp(cmd = '') {
             const helpMessages = {
@@ -1923,10 +3078,15 @@
                     - echo : Affiche un message
                     - cd : Change de répertoire
                     - ls : Liste les fichiers et dossiers
+                    - ll : 'Alias de ls -l : liste détaillée des fichiers.',
                     - mkdir : Crée un nouveau dossier
                     - touch : Crée un nouveau fichier
                     - rm : Supprime un fichier ou un dossier
                     - chmod : Change les permissions d'un fichier ou d'un dossier
+                    - cat : Lit et affiche le contenu d'un fichier (peut être redirigé avec > ou >>)
+                    - head : Affiche les premières lignes d'un fichier (option -n)
+                    - tail : Affiche les dernières lignes d'un fichier (option -n)
+                    - nano : Ouvre un éditeur pour modifier un fichier
                 `,
                 'pwd': 'Usage: pwd [-h]\nAffiche le chemin du répertoire courant.',
                 'echo': 'Usage: echo [-h] [message]\nAffiche un message.',
@@ -1936,6 +3096,10 @@
                 'touch': 'Usage: touch [-h] [fichier]\nCrée un nouveau fichier.',
                 'rm': 'Usage: rm [-h] [-r] [fichier|dossier]\nSupprime un fichier ou un dossier.',
                 'chmod': 'Usage: chmod [-h] [permissions] [fichier|dossier]\nChange les permissions d\'un fichier ou d\'un dossier.',
+                'cat': 'Usage: cat [-h] fichier...\nAffiche le contenu d\'un ou plusieurs fichiers.',
+                'head': 'Usage: head [-h] [-n nombre] fichier...\nAffiche les premières lignes (10 par défaut).',
+                'tail': 'Usage: tail [-h] [-n nombre] fichier...\nAffiche les dernières lignes (10 par défaut).',
+                'nano': 'Usage: nano [-h] fichier\nOuvre un éditeur graphique pour modifier le fichier.',
                 'man': 'Usage: man [commande]\nAffiche la documentation détaillée d\'une commande disponible dans cet environnement.'
             };
             return helpMessages[cmd] || `Commande inconnue : ${cmd}`;
@@ -2078,6 +3242,65 @@ OPTIONS
 REMARQUES
     Crée les fichiers inexistants dans le répertoire cible si les droits w+x sont présents.
 `,
+                cat: `
+CAT(1)                             Commandes Shell                             CAT(1)
+
+NOM
+    cat - lit et affiche le contenu de fichiers.
+
+SYNOPSIS
+    cat fichier...
+
+DESCRIPTION
+    Imprime les fichiers fournis dans l'ordre. La sortie peut être redirigée avec
+    '>' ou '>>' pour écrire dans un autre fichier stocké en mémoire.
+
+LIMITES
+    Chaque fichier de cette simulation est plafonné à 40 Mo.
+`,
+                head: `
+HEAD(1)                            Commandes Shell                            HEAD(1)
+
+NOM
+    head - affiche le début d'un fichier.
+
+SYNOPSIS
+    head [-n nombre] fichier...
+
+DESCRIPTION
+    Retourne les premières lignes de chaque fichier (10 par défaut).
+    Accepte '-n 25' ou '-n25' pour personnaliser le nombre de lignes.
+`,
+                tail: `
+TAIL(1)                            Commandes Shell                            TAIL(1)
+
+NOM
+    tail - affiche la fin d'un fichier.
+
+SYNOPSIS
+    tail [-n nombre] fichier...
+
+DESCRIPTION
+    Retourne les dernières lignes de chaque fichier (10 par défaut).
+    Accepte '-n 25' ou '-n25' pour personnaliser le nombre de lignes.
+`,
+                nano: `
+NANO(1)                            Commandes Shell                            NANO(1)
+
+NOM
+    nano - édite un fichier texte dans une fenêtre dédiée.
+
+SYNOPSIS
+    nano fichier
+
+DESCRIPTION
+    Ouvre un éditeur graphique simulé affichant le contenu du fichier et
+    permet de modifier puis enregistrer le texte. Les fichiers dépassant
+    40 Mo ne sont pas supportés.
+
+REMARQUES
+    Le fichier est créé s'il n'existe pas, sous réserve de permissions suffisantes.
+`,
                 rm: `
 RM(1)                              Commandes Shell                              RM(1)
 
@@ -2119,8 +3342,24 @@ REMARQUES
 
             return manuals[topic];
         },
-        echo(params){
-            this.output = params.join(" ")
+        echo(params = []){
+            const segments = Array.isArray(params) ? params : (params ? [params] : []);
+            if (!segments.length) {
+                this.output = '';
+                return '';
+            }
+            const args = [...segments];
+            let interpret = false;
+
+            while (args.length && args[0] === '-e') {
+                interpret = true;
+                args.shift();
+            }
+
+            const message = args.join(' ');
+            const finalMessage = interpret ? this.interpretEscapeSequences(message) : message;
+            this.output = finalMessage;
+            return finalMessage;
         },
         pathWayDirectory(){//pwd
             this.output = this.getPath(this.currentNode).replace("root", "");
@@ -2129,9 +3368,11 @@ REMARQUES
                 this.output="/"
             
             this.pwd = this.output;
-            this.updateTree(this.currentNode);
+            this.refreshTreeView(this.currentNode, { signal: false });
         },
-        changeDirectory(params) {//cd
+        changeDirectory(params, options = {}) {//cd
+            const silent = !!(options && options.silent);
+            const previousNode = this.currentNode;
             let _dirName = ""
             if(typeof params == "object")//params
                 _dirName = params[0];
@@ -2163,10 +3404,12 @@ REMARQUES
             if(!_dirName){
                 this.currentNode = this.root;
                 closeChilds(this.currentNode)
-                this.changeDirectory("home/user")
+                this.changeDirectory("home/user", options)
                 this.cDirect.to = this.currentNode.data.name;
-                this.output = `Deplacement vers le dossier personnel (par default) : ${this.currentNode.data.name}`;
-                this.updateTree(this.currentNode);
+                if (!silent) {
+                    this.output = `Deplacement vers le dossier personnel (par default) : ${this.currentNode.data.name}`;
+                }
+                this.refreshTreeView(this.currentNode, { signal: !silent });
                 return "valid";
             }
             else if(_dirName=='/'){
@@ -2261,11 +3504,21 @@ REMARQUES
             this.cDirect.to = this.currentNode.data.name;
             // console.log("cd:", this.cDirect);
 
-            this.pwd = ""
-            this.output = `Dossier actuel : ${this.currentNode.data.name}`;
-            this.createOutputAnimate()
-            this.updateTree(this.currentNode);
-            this.trackDirectoryVisit(this.getPath(this.currentNode));
+            if (!silent) {
+                this.pwd = ""
+                this.output = `Dossier actuel : ${this.currentNode.data.name}`;
+                this.createOutputAnimate()
+                this.trackDirectoryVisit(this.getPath(this.currentNode));
+            } else if (!this.pwd) {
+                const normalized = this.getPath(this.currentNode).replace("root", "") || "/";
+                this.pwd = normalized;
+            }
+            this.refreshTreeView(this.currentNode, { signal: !silent });
+            if (!silent) {
+                this.$nextTick(() => {
+                    this.animateTreePath(previousNode, this.currentNode);
+                });
+            }
             return 'valid'
         },
         findChildGlobal(root, node) {
@@ -2338,6 +3591,7 @@ REMARQUES
                 return;
             }
 
+            let beforChild = targetNode.children;
             // Prépare les enfants à afficher
             let nodeChildren;
             if (isParentListing) {
@@ -2348,7 +3602,7 @@ REMARQUES
                 nodeChildren = targetNode.children;
             }
 
-            // Filtre les fichiers cachés si `-a` n'est pas spécifié
+            // // Filtre les fichiers cachés si `-a` n'est pas spécifié
             const children = showHidden
                 ? nodeChildren
                 : nodeChildren.filter((child) => !child.data.hidden);
@@ -2360,6 +3614,8 @@ REMARQUES
             // Génère la sortie
             if (children.length === 0) {
                 this.output = "Dossier vide";
+                targetNode.children = beforChild;
+                return;
             } 
             else if (detailedView) {
                 // Vue détaillée avec `-l`
@@ -2375,11 +3631,11 @@ REMARQUES
                 this.output = children.map((child) => child.data.name).join("\n");
             }
 
-            // console.log("-----", this.currentNode, targetNode);
+            // console.log("-----", this.currentNode, targetNode, children);
 
             // Met à jour l'arbre uniquement si l'on parcourt le répertoire courant ou un sous-dossier
-            if (!isParentListing) {
-                this.updateTree(this.currentNode);
+            if (!isParentListing && children.length > 0) {
+                this.refreshTreeView(this.currentNode);
             }
         },
         makeDirectory(params) {//mkdir
@@ -2465,7 +3721,8 @@ REMARQUES
 
             if (createdDirs.length) {
                 this.preserveCurrentPath();
-                this.createTree();
+                this.createTree({ preserveSelection: true });
+                this.emitTreeSignal();
                 this.output = `Dossier(s) créé(s) : ${createdDirs.join(', ')}`;
                 if (errors.length) {
                     this.output += ` | ${errors.join(' | ')}`;
@@ -2538,7 +3795,8 @@ REMARQUES
 
             if (created.length || updated.length) {
                 this.preserveCurrentPath();
-                this.createTree();
+                this.createTree({ preserveSelection: true });
+                this.emitTreeSignal();
                 const messages = [];
                 if (created.length) {
                     messages.push(`Fichier(s) créé(s) : ${created.join(', ')}`);
@@ -2558,6 +3816,387 @@ REMARQUES
             }
 
             this.output = errors.join(' | ') || 'Aucun fichier traité';
+        },
+        catCommand(params = []) {
+            const args = Array.isArray(params)
+                ? params.filter((arg) => typeof arg === 'string' && arg.trim() !== '')
+                : (params ? [params] : []);
+            if (!args.length) {
+                this.output = 'cat: indique au moins un fichier.';
+                return { state: 'warning', stdout: '' };
+            }
+
+            const outputs = [];
+            const errors = [];
+            let successCount = 0;
+
+            for (const filePath of args) {
+                const targetPath = filePath;
+                const nodeInfo = this.getNodeFromPath(targetPath, { includeFiles: true });
+                const fileNode = nodeInfo?.node;
+
+                if (!fileNode || fileNode.data.type !== 'f') {
+                    errors.push(`cat: ${targetPath}: fichier introuvable`);
+                    continue;
+                }
+
+                if (!this.hasPermission(fileNode, 'r')) {
+                    errors.push(`cat: ${targetPath}: permission refusée`);
+                    continue;
+                }
+
+                successCount += 1;
+                const fileContent = typeof fileNode.data.content === 'string' ? fileNode.data.content : '';
+                outputs.push(fileContent);
+            }
+
+            const stdout = outputs.join(outputs.length > 1 ? '\n' : '') || '';
+            const errorText = errors.join(' | ');
+            if (errorText && stdout) {
+                this.output = `${stdout}\n${errorText}`;
+            } else {
+                this.output = stdout || errorText;
+            }
+
+            const resultState = errors.length
+                ? (successCount > 0 ? 'warning' : 'error')
+                : 'valid';
+
+            return { state: resultState, stdout, stderr: errorText };
+        },
+        parseLineCountOption(params = [], commandName = 'head', defaultCount = 10) {
+            const args = Array.isArray(params)
+                ? params.filter((arg) => typeof arg === 'string' && arg.trim() !== '')
+                : (typeof params === 'string' && params.trim() !== '' ? [params] : []);
+            const result = {
+                count: defaultCount,
+                files: [],
+                error: '',
+            };
+
+            for (let i = 0; i < args.length; i++) {
+                const arg = args[i];
+                if (arg === '-n') {
+                    const next = args[i + 1];
+                    if (next === undefined) {
+                        result.error = `${commandName}: l'option -n requiert une valeur.`;
+                        break;
+                    }
+                    const parsed = parseInt(next, 10);
+                    if (!Number.isFinite(parsed) || parsed < 0) {
+                        result.error = `${commandName}: valeur invalide '${next}' pour -n.`;
+                        break;
+                    }
+                    result.count = parsed;
+                    i += 1;
+                    continue;
+                }
+                if (arg.startsWith('-n') && arg.length > 2) {
+                    const value = arg.slice(2);
+                    const parsed = parseInt(value, 10);
+                    if (!Number.isFinite(parsed) || parsed < 0) {
+                        result.error = `${commandName}: valeur invalide '${value}' pour -n.`;
+                        break;
+                    }
+                    result.count = parsed;
+                    continue;
+                }
+                result.files.push(arg);
+            }
+
+            return result;
+        },
+        headCommand(params = []) {
+            const parsed = this.parseLineCountOption(params, 'head');
+            if (parsed.error) {
+                this.output = parsed.error;
+                return { state: 'error', stdout: '', stderr: parsed.error };
+            }
+            if (!parsed.files.length) {
+                const msg = 'head: indique au moins un fichier.';
+                this.output = msg;
+                return { state: 'warning', stdout: '', stderr: msg };
+            }
+            return this.processFileLineOutput({
+                files: parsed.files,
+                count: parsed.count,
+                commandName: 'head',
+                mode: 'head',
+            });
+        },
+        tailCommand(params = []) {
+            const parsed = this.parseLineCountOption(params, 'tail');
+            if (parsed.error) {
+                this.output = parsed.error;
+                return { state: 'error', stdout: '', stderr: parsed.error };
+            }
+            if (!parsed.files.length) {
+                const msg = 'tail: indique au moins un fichier.';
+                this.output = msg;
+                return { state: 'warning', stdout: '', stderr: msg };
+            }
+            return this.processFileLineOutput({
+                files: parsed.files,
+                count: parsed.count,
+                commandName: 'tail',
+                mode: 'tail',
+            });
+        },
+        handleNanoCommand(params = []) {
+            const args = Array.isArray(params)
+                ? params.filter((arg) => typeof arg === 'string' && arg.trim() !== '')
+                : (params ? [params] : []);
+            if (!args.length) {
+                this.output = 'nano: indique un fichier à éditer.';
+                return 'warning';
+            }
+            const targetPath = args[0];
+            const fileLookup = this.getNodeFromPath(targetPath, { includeFiles: true });
+            let fileNode = fileLookup?.node;
+
+            if (fileNode && fileNode.data.type === 'd') {
+                this.output = `nano: '${targetPath}' est un dossier.`;
+                return 'error';
+            }
+
+            if (!fileNode) {
+                const parentInfo = this.getNodeFromPath(targetPath, { stopBeforeLast: true, includeFiles: true });
+                if (!parentInfo || !parentInfo.node || !parentInfo.targetName) {
+                    this.output = `nano: chemin invalide '${targetPath}'.`;
+                    return 'error';
+                }
+                if (!this.hasPermission(parentInfo.node, ['w', 'x'])) {
+                    this.output = `nano: permissions insuffisantes dans '${parentInfo.node.data.name}'.`;
+                    return 'error';
+                }
+                fileNode = this.createFileNode(parentInfo.node, parentInfo.targetName);
+                this.preserveCurrentPath();
+                this.createTree({ preserveSelection: true });
+                this.emitTreeSignal();
+                this.stats.createdFile = true;
+                this.checkBadges();
+            } else if (!this.hasPermission(fileNode, ['r', 'w'])) {
+                this.output = `nano: permissions insuffisantes pour éditer '${targetPath}'.`;
+                return 'error';
+            }
+
+            const fileContent = typeof fileNode.data.content === 'string' ? fileNode.data.content : '';
+            this.openNanoEditor(targetPath, fileContent);
+            this.output = `nano: édition ouverte pour '${targetPath}'.`;
+            return 'valid';
+        },
+        openNanoEditor(filePath, content = '') {
+            this.nanoEditor.filePath = filePath;
+            this.nanoEditor.content = content;
+            this.nanoEditor.originalContent = content;
+            this.nanoEditor.error = '';
+            this.nanoEditor.show = true;
+        },
+        closeNanoEditor() {
+            this.nanoEditor.show = false;
+            this.nanoEditor.error = '';
+            this.nanoEditor.filePath = '';
+            this.nanoEditor.content = '';
+            this.nanoEditor.originalContent = '';
+            this.$nextTick(() => this.focusCommandInput());
+        },
+        saveNanoEditor() {
+            if (!this.nanoEditor.filePath) {
+                this.nanoEditor.error = 'Aucun fichier à sauvegarder.';
+                return;
+            }
+            const targetPath = this.nanoEditor.filePath;
+            const buffer = this.nanoEditor.content;
+            const writeResult = this.writeFileContent(targetPath, buffer, { append: false });
+            if (!writeResult.ok) {
+                this.nanoEditor.error = writeResult.message;
+                return;
+            }
+            if (writeResult.created) {
+                this.preserveCurrentPath();
+                this.createTree({ preserveSelection: true });
+                this.emitTreeSignal();
+                this.stats.createdFile = true;
+                this.checkBadges();
+            }
+            this.nanoEditor.error = '';
+            this.closeNanoEditor();
+            this.output = `nano: '${targetPath}' sauvegardé (${this.getByteLength(buffer)} octets).`;
+        },
+        processFileLineOutput({ files = [], count = 10, commandName = 'head', mode = 'head' }) {
+            const outputs = [];
+            const errors = [];
+            let successCount = 0;
+            const useHeaders = files.length > 1;
+            const safeCount = Number.isFinite(count) && count >= 0 ? count : 10;
+
+            files.forEach((filePath) => {
+                const nodeInfo = this.getNodeFromPath(filePath, { includeFiles: true });
+                const fileNode = nodeInfo?.node;
+                if (!fileNode || fileNode.data.type !== 'f') {
+                    errors.push(`${commandName}: ${filePath}: fichier introuvable`);
+                    return;
+                }
+                if (!this.hasPermission(fileNode, 'r')) {
+                    errors.push(`${commandName}: ${filePath}: permission refusée`);
+                    return;
+                }
+
+                successCount += 1;
+                const rawContent = typeof fileNode.data.content === 'string' ? fileNode.data.content : '';
+                const normalized = rawContent.replace(/\r\n/g, '\n');
+                let lines = normalized.split('\n');
+                if (lines.length === 1 && lines[0] === '') {
+                    lines = [];
+                }
+
+                let selected = [];
+                if (mode === 'head') {
+                    selected = lines.slice(0, safeCount);
+                } else { // tail
+                    selected = safeCount === 0 ? [] : lines.slice(-safeCount);
+                }
+
+                const block = selected.join('\n');
+                if (useHeaders) {
+                    outputs.push(`==> ${filePath} <==`);
+                }
+                outputs.push(block);
+            });
+
+            const stdout = outputs.join(outputs.length > 0 ? '\n' : '');
+            const errorText = errors.join(' | ');
+            if (errorText && stdout) {
+                this.output = `${stdout}\n${errorText}`;
+            } else {
+                this.output = stdout || errorText;
+            }
+
+            const resultState = errors.length
+                ? (successCount > 0 ? 'warning' : 'error')
+                : 'valid';
+
+            return { state: resultState, stdout, stderr: errorText };
+        },
+        applyOutputRedirection(redirection, payload) {
+            const normalizedPayload = typeof payload === 'string' ? payload : '';
+            const writeResult = this.writeFileContent(redirection.target, normalizedPayload, {
+                append: redirection.append,
+            });
+
+            if (!writeResult.ok) {
+                this.output = writeResult.message;
+                return 'error';
+            }
+
+            if (writeResult.created) {
+                this.preserveCurrentPath();
+                this.createTree({ preserveSelection: true });
+                this.emitTreeSignal();
+                this.stats.createdFile = true;
+                this.checkBadges();
+            }
+
+            const targetLabel = writeResult.path || redirection.target;
+            const charCount = normalizedPayload.length;
+            const label = charCount > 1 ? 'caractères' : 'caractère';
+            this.output = `Redirection: ${redirection.append ? 'ajouté' : 'écrit'} ${charCount} ${label} dans '${targetLabel}'.`;
+            return 'valid';
+        },
+        writeFileContent(targetPath, rawContent, options = {}) {
+            const normalizedPath = (targetPath || '').trim();
+            if (!normalizedPath) {
+                return { ok: false, message: 'Redirection: aucun fichier cible indiqué.' };
+            }
+
+            const context = this.getNodeFromPath(normalizedPath, { stopBeforeLast: true, includeFiles: true });
+            if (!context || !context.node || !context.targetName) {
+                return { ok: false, message: `Redirection: chemin invalide '${normalizedPath}'.` };
+            }
+
+            const content = typeof rawContent === 'string' ? rawContent : (rawContent ?? '').toString();
+            const parentNode = context.node;
+            const fileName = context.targetName;
+            let fileNode = this.getChildNode(parentNode, fileName);
+            const appendMode = !!options.append;
+            const existingContent = fileNode && typeof fileNode.data.content === 'string'
+                ? fileNode.data.content
+                : '';
+            const newContent = appendMode ? (existingContent + content) : content;
+
+            if (fileNode && fileNode.data.type === 'd') {
+                return { ok: false, message: `Redirection: '${normalizedPath}' est un dossier.` };
+            }
+
+            if (fileNode && !this.hasPermission(fileNode, 'w')) {
+                return { ok: false, message: `Redirection: permissions insuffisantes pour '${normalizedPath}'.` };
+            }
+
+            if (!fileNode && !this.hasPermission(parentNode, ['w', 'x'])) {
+                return { ok: false, message: `Redirection: permissions insuffisantes dans '${parentNode.data.name}'.` };
+            }
+
+            const nextSize = this.getByteLength(newContent);
+            const limitLabel = `${Math.round(this.maxFileSizeBytes / (1024 * 1024))} Mo`;
+            if (nextSize > this.maxFileSizeBytes) {
+                return {
+                    ok: false,
+                    message: `Redirection: taille maximale de ${limitLabel} dépassée pour '${normalizedPath}'.`,
+                };
+            }
+
+            let created = false;
+            if (!fileNode) {
+                fileNode = this.createFileNode(parentNode, fileName);
+                created = true;
+            }
+
+            fileNode.data.content = newContent;
+            fileNode.data.date = this.getFormattedDate();
+
+            return { ok: true, created, node: fileNode, path: normalizedPath };
+        },
+        getByteLength(value) {
+            if (!value) {
+                return 0;
+            }
+            return new TextEncoder().encode(value).length;
+        },
+        interpretEscapeSequences(value = '') {
+            let result = '';
+            for (let i = 0; i < value.length; i++) {
+                const char = value[i];
+                if (char === '\\' && i + 1 < value.length) {
+                    const next = value[i + 1];
+                    i += 1;
+                    switch (next) {
+                        case 'n':
+                            result += '\n';
+                            break;
+                        case 't':
+                            result += '\t';
+                            break;
+                        case 'r':
+                            result += '\r';
+                            break;
+                        case '0':
+                            result += '\0';
+                            break;
+                        case '\\':
+                            result += '\\';
+                            break;
+                        case '"':
+                            result += '"';
+                            break;
+                        default:
+                            result += next;
+                            break;
+                    }
+                } else {
+                    result += char;
+                }
+            }
+            return result;
         },
         removeItem(params) {//rm
             const args = Array.isArray(params) ? params : (params ? [params] : []);
@@ -2674,7 +4313,7 @@ REMARQUES
                 deletedList.push(child.data.name);
             });
 
-            this.updateTree(this.currentNode);
+            this.refreshTreeView(this.currentNode);
             const deletedNames = deletedList.join(', ');
             let extraInfo = '';
             if (blockedDirs.size) {
@@ -2763,7 +4402,8 @@ REMARQUES
 
             if (updated.length) {
                 this.preserveCurrentPath();
-                this.createTree();
+                this.createTree({ preserveSelection: true });
+                this.emitTreeSignal();
             }
 
             const messages = [];
@@ -2942,6 +4582,7 @@ REMARQUES
                 hidden: name[0] === '.',
                 date: formattedDate,
                 children: null,
+                content: '',
             };
             if (!parent.data.children) {
                 parent.data.children = [];
@@ -3149,6 +4790,110 @@ REMARQUES
 </script>
   
 <style lang="scss" model>
+    .floating-robot {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        width: 500px;
+        height: 70px;
+        z-index: 1050;
+        pointer-events: auto;
+        animation: ghostFloat 4s ease-in-out infinite;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        .robot-sprite {
+            position: absolute;
+            left: 0;
+            width: 70px;
+            // width: 100%;
+            height: auto;
+            transform-origin: center;
+            display: block;
+        }
+        .robot-sprite.robot-jump {
+            animation: robotJump 0.7s ease;
+        }
+        .robot-sprite.robot-flicker {
+            animation: robotFlicker 0.8s steps(4) forwards;
+        }
+        .robot-tooltip {
+            position: absolute;
+            top: -10px;
+            left: 80px;
+            min-width: 140px;
+            max-width: 500px;
+            background: rgba(20, 20, 20, 0.92);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+            animation: tooltipFade 0.35s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .robot-tooltip-icon {
+            flex-shrink: 0;
+        }
+        .robot-tooltip--success {
+            background: rgba(21, 117, 39, 0.9);
+            color: #e8ffe9;
+        }
+        .robot-tooltip--warning {
+            background: rgba(164, 111, 14, 0.9);
+            color: #fff4da;
+        }
+        .robot-tooltip--error {
+            background: rgba(146, 25, 25, 0.92);
+            color: #ffeaea;
+        }
+        .robot-sound-toggle {
+            position: absolute;
+            top: 80px;
+            left: 0;
+            transform: translateX(-10px);
+            background: rgba(15, 15, 15, 0.95);
+            color: #f2f2f2;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+            animation: tooltipFade 0.25s ease;
+        }
+    }
+
+    @keyframes ghostFloat {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(-12px); }
+        100% { transform: translateY(0); }
+    }
+
+    @keyframes robotJump {
+        0% { transform: translateY(0) scale(1); }
+        15% { transform: translateY(-22px) scale(1.05); }
+        30% { transform: translateY(-10px) scale(0.96); }
+        45% { transform: translateY(-18px) scale(1.02); }
+        60% { transform: translateY(-6px) scale(0.98); }
+        80% { transform: translateY(-12px) scale(1.01); }
+        100% { transform: translateY(0) scale(1); }
+    }
+
+    @keyframes robotFlicker {
+        0% { opacity: 1; transform: scale(1); }
+        20% { opacity: 0.4; transform: scale(0.98); }
+        30% { opacity: 0.7; transform: scale(1.02); }
+        50% { opacity: 0.25; transform: scale(0.97); }
+        70% { opacity: 0.8; transform: scale(1.01); }
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes tooltipFade {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     .v-container {
         width: 97vw;
         min-width: 1000px;
@@ -3514,6 +5259,89 @@ REMARQUES
 
     .badge-icon-locked {
         color: rgba(255, 255, 255, 0.45);
+    }
+
+    .command-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 6px;
+        padding-left: 4px;
+    }
+    .command-suggestions.global {
+        // margin-bottom: 12px;
+        margin: 0;
+        width: 50%;
+        height: 40px;
+        padding: 0 8px;
+    }
+
+    .suggestion-chip {
+        font-size: 0.75rem;
+        letter-spacing: 0.02em;
+    }
+
+    .command-input-wrapper {
+        position: relative;
+    }
+
+    .command-input-wrapper.hint-active :deep(.v-field) {
+        animation: pulseGlowBorder 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulseGlowBorder {
+        0% { box-shadow: 0 0 0 rgba(125, 226, 209, 0.2); }
+        50% { box-shadow: 0 0 15px rgba(125, 226, 209, 0.45); }
+        100% { box-shadow: 0 0 0 rgba(125, 226, 209, 0.2); }
+    }
+
+    .command-input-hint {
+        position: absolute;
+        z-index: 10;
+        top: 11px;
+        right: 10px;
+        display: flex;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(4, 44, 60, 0.95), rgba(8, 134, 149, 0.9));
+        color: #eaffff;
+        font-size: 0.8rem;
+        padding: 6px 10px;
+        border-radius: 999px;
+        cursor: pointer;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+        user-select: none;
+    }
+
+    .command-input-hint .hint-arrow {
+        margin-left: 6px;
+        font-weight: 700;
+    }
+
+    .signal-layer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+    }
+
+    .signal-anim {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(125, 226, 209, 0.9), rgba(5, 15, 25, 0.6));
+        box-shadow: 0 0 12px rgba(125, 226, 209, 0.9);
+        animation: signalTravel 0.9s ease-out forwards;
+    }
+
+    @keyframes signalTravel {
+        from {
+            transform: translate(0, 0) scale(1);
+            opacity: 1;
+        }
+        to {
+            transform: translate(var(--signal-end-x, 0px), var(--signal-end-y, 0px)) scale(0.3);
+            opacity: 0;
+        }
     }
 </style>
 

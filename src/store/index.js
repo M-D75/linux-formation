@@ -16,6 +16,7 @@ const defaultState = () => ({
     earned: {},
     stats: defaultBadgeStats(),
   },
+  robotSoundEnabled: true,
 });
 
 const loadPersistedState = () => {
@@ -36,6 +37,9 @@ const loadPersistedState = () => {
         earned: parsed?.badgeState?.earned || {},
         stats: { ...defaultBadgeStats(), ...(parsed?.badgeState?.stats || {}) },
       },
+      robotSoundEnabled: typeof parsed?.robotSoundEnabled === 'boolean'
+        ? parsed.robotSoundEnabled
+        : true,
     };
   } catch (error) {
     return defaultState();
@@ -66,6 +70,9 @@ export default createStore({
       if (payload?.stats) {
         state.badgeState.stats = { ...state.badgeState.stats, ...payload.stats };
       }
+    },
+    setRobotSoundEnabled(state, enabled) {
+      state.robotSoundEnabled = !!enabled;
     },
   },
   actions: {},

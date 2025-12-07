@@ -22,7 +22,7 @@
                 >
                     {{ robotTooltip.icon }}
                 </v-icon>
-                <span>{{ robotTooltip.message }}</span>
+                <span v-html="robotTooltip.message"></span>
             </div>
             <div
                 v-if="robotSoundToast.visible"
@@ -37,25 +37,31 @@
         >
             <v-card>
                 <v-card-title class="text-h6 mission-title">
-                    <v-icon color="cyan-lighten-3" class="mr-2">mdi-rocket-launch</v-icon>
+                    <v-icon color="cyan-lighten-1" class="mr-2">mdi-rocket-launch</v-icon>
                     Briefing de mission
                 </v-card-title>
                 <v-card-text class="mission-intro">
-                    <p>
-                        👋 Bienvenue, padawan du terminal ! L'ordinateur d'entraînement Linux vient de se réveiller
-                        et cherche un(e) pilote prêt(e) à tapoter des commandes héroïques.
+                    <p class="text-body-2">
+                        👋 Padawan du Shell, te voilà enfin !<br>
+                        L’ordinateur d'entraînement a dormi 17 cycles... mais ta venue l’a réveillé.<br><br>
+
+                        J’ai besoin d’un pilote. D’un vrai.<br>
+                        D’un humain qui sait taper plus vite que son ombre.
                     </p>
                     <br>
-                    <p>
-                        🎯 <span class="font-weight-bold">Ta mission express</span> :
-                        <br>- Te situer dans l'arborescence
-                        <br>- Explorer les environs
-                        <br>- Nettoyer l'antique dossier <strong>archives</strong>
-                        <br>- Monter l'opération <strong>mission/briefing.txt</strong>
+                    <p class="text-body-2">
+                        🎯 <span class="font-weight-bold text-subtitle-1">Objectif</span> :
+                        <br>
+                        Explorer un vieux système Linux abandonné
+                        et réactiver 5 modules sacrés :
+                          <br> - <span class="font-weight-medium">Observation</span> : Te situer dans l'arborescence <v-chip label size="x-small" color="blue" style="margin: 0;"><code>pwd</code></v-chip>
+                          <br> - <span class="font-weight-medium">Exploration | Déplacement</span> : Explorer les environs <v-chip label size="x-small" color="blue" style="margin: 0;"><code>ls|cd</code></v-chip>
+                          <br> - <span class="font-weight-medium">Nettoyage</span> : Nettoyer l'antique dossier <strong>archives</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>rm</code></v-chip>
+                          <br> - <span class="font-weight-medium">Restauration</span> : Monter l'opération <strong>mission/briefing.txt</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>touch</code></v-chip>
                     </p>
                     <br>
-                    <p>
-                        🤔 Tu veux un copilote baptisé "Tutoriel" ou tu fonces en solo ?
+                    <p class="text-body-2">
+                        🤔 Tu veux un copilote baptisé <span class="font-weight-bold">"Tutoriel"</span> ou tu fonces en solo ?
                     </p>
                 </v-card-text>
                 <v-card-actions class="justify-end">
@@ -138,7 +144,7 @@
                                     class="suggestion-chip chip-fade-drop"
                                     @click="selectCommandSuggestion(cmd)"
                                 >
-                                    {{ cmd }}
+                                    <span class="font-weight-bold">{{ cmd }}</span>
                                 </v-chip>
                             </template>
                         </v-tooltip>
@@ -709,6 +715,9 @@
             return this.badges.filter((badge) => badge.earned).length;
         },
         robotImage() {
+            if (this.robotMood === 'default' && this.robotEyesClosed) {
+                return this.robotSprites.defaultClosed || this.robotSprites.default;
+            }
             return this.robotSprites[this.robotMood] || this.robotSprites.default;
         },
         robotSoundEnabled: {
@@ -746,6 +755,17 @@
         command(val) {
             if (val && this.showCommandHint) {
                 this.showCommandHint = false;
+            }
+        },
+        showCommandHint(val) {
+            if (!this.tutorial.active || this.tutorial.showIntro || this.tutorial.completed) {
+                return;
+            }
+            if (val) {
+                this.maybeShowTutorialIntroHint();
+            } else {
+                this.clearTutorialRobotHint('intro');
+                this.maybeShowTutorialHelpHint();
             }
         },
     },
@@ -804,13 +824,13 @@
                 steps: [
                     {
                         id: 'help',
-                        title: '1. Découvrir ton arsenal',
+                        title: '1. Découvre ton arsenal',
                         description: 'Tape <code>help</code> pour afficher toutes les commandes disponibles dans ce poste d’entraînement.',
                         success: 'Tu sais comment obtenir la liste des commandes.'
                     },
                     {
                         id: 'pwd',
-                        title: '2. Repérez votre position',
+                        title: '2. Repérer votre position',
                         description: 'Tape <code>pwd</code> pour afficher le chemin comme <strong>root &gt; home &gt; user</strong>.',
                         success: 'Tu sais maintenant où tu te trouves.'
                     },
@@ -913,8 +933,9 @@
             robotResetTimer: null,
             robotJumpTimer: null,
             robotSprites: {
-                default: '/img/smile-robot.svg',
-                success: '/img/happy-love-robot.svg',
+                default: '/img/neutral-eyes-open.svg',
+                defaultClosed: '/img/neutral-eyes-closed.svg',
+                success: '/img/smile-robot.svg',
                 warning: '/img/unhappy-robot.svg',
                 error: '/img/error-robot.svg',
                 loving: '/img/full-love-robot.svg',
@@ -923,6 +944,8 @@
             robotFlicker: false,
             robotFlickerTimer: null,
             robotHovering: false,
+            robotEyesClosed: false,
+            robotBlinkTimer: null,
             badgeSnackbar: {
                 show: false,
                 message: '',
@@ -935,12 +958,14 @@
                 warning: [],
                 error: [],
                 success: [],
+                beep: [],
             },
             audioTimers: {
                 talk: null,
                 warning: null,
                 error: null,
                 success: null,
+                beep: null,
             },
             robotMoodOverride: null,
             robotTooltip: {
@@ -988,11 +1013,15 @@
                 'Les permissions t\'obéissent 👑.',
                 'Chaque réussite mérite un petit sourire.'
             ],
-            robotDialogueIconPool: [
-                'mdi-robot-excited',
-                'mdi-emoticon-happy-outline',
-                'mdi-star-face',
-                'mdi-flash',
+            robotCommandKeywords: [
+                'help', 'pwd', 'ls', 'cd', 'mkdir', 'touch',
+                'rm', 'chmod', 'cat', 'head', 'tail', 'nano', 'echo'
+            ],
+        robotDialogueIconPool: [
+            'mdi-robot-excited',
+            'mdi-emoticon-happy-outline',
+            'mdi-star-face',
+            'mdi-flash',
                 'mdi-rocket',
                 'mdi-owl',
                 'mdi-lightbulb-on-outline',
@@ -1020,6 +1049,11 @@
             },
             activeAudios: [],
             talkLoopAudio: null,
+            tutorialGuidance: {
+                introShown: false,
+                helpHintShown: false,
+                persistentId: null,
+            },
         };
     },
     mounted() {
@@ -1028,6 +1062,7 @@
         this.loadCommandHistory();
         this.loadBadgeState();
         this.loadAudioEffects();
+        this.scheduleNeutralBlink();
     },
     beforeUnmount() {
         this.signalTimers.forEach((timer) => clearTimeout(timer));
@@ -1940,6 +1975,12 @@
             this.tutorial.currentStep = 0;
             this.tutorial.feedback = '';
             this.tutorial.feedbackType = '';
+            this.tutorialGuidance.introShown = false;
+            this.tutorialGuidance.helpHintShown = false;
+            this.tutorialGuidance.persistentId = null;
+            if (this.showCommandHint) {
+                this.$nextTick(() => this.maybeShowTutorialIntroHint());
+            }
         },
         skipTutorial() {
             this.tutorial.showIntro = false;
@@ -2025,15 +2066,23 @@
             if (success) {
                 this.tutorial.feedback = step.success || 'Étape validée.';
                 this.tutorial.feedbackType = 'success';
-                if (step.success) {
-                    this.announceRobot(step.success, {
-                        duration: 3200,
+                let robotMessage = step.success || '';
+                const mnemonic = this.getMnemonicHint(step.id);
+                if (mnemonic) {
+                    robotMessage += ` ${mnemonic}`;
+                }
+                if (robotMessage) {
+                    this.announceRobot(robotMessage, {
+                        duration: 5200,
                         mood: 'success',
                         type: 'success',
                         icon: 'mdi-check-circle',
                     });
                 }
                 this.tutorial.currentStep += 1;
+                if (this.tutorial.currentStep > 0) {
+                    this.clearTutorialRobotHint('help');
+                }
                 this.playSoundEffect('success');
                 if (this.tutorial.currentStep >= this.tutorial.steps.length) {
                     this.finishTutorial();
@@ -2060,7 +2109,7 @@
                     this.robotMoodOverride = 'warning';
                     const warningText = errorMessage || 'Cette commande ne valide pas encore cette étape.';
                     this.announceRobot(warningText, {
-                        duration: 3600,
+                        duration: 4600,
                         mood: 'warning',
                         type: 'warning',
                         icon: 'mdi-alert-circle-outline',
@@ -2496,7 +2545,7 @@
                 this.playSoundEffect('error');
                 const errorMessage = `Erreur détectée. ${this.getRandomErrorEncouragement()}`;
                 this.announceRobot(errorMessage, {
-                    duration: 2400,
+                    duration: 3400,
                     mood: 'error',
                     type: 'error',
                     icon: 'mdi-alert-octagon',
@@ -2530,12 +2579,20 @@
                 clearTimeout(this.robotFlickerTimer);
                 this.robotFlickerTimer = null;
             }
+            if (this.robotBlinkTimer) {
+                clearTimeout(this.robotBlinkTimer);
+                this.robotBlinkTimer = null;
+            }
+            this.robotEyesClosed = false;
         },
         updateRobotMood(state) {
             if (this.robotHovering && state !== 'loving') {
                 return;
             }
             this.clearRobotMoodTimers();
+            if (state !== 'default' && this.tutorialGuidance.persistentId) {
+                this.clearTutorialRobotHint();
+            }
             if (this.robotHovering && state !== 'loving') {
                 return;
             }
@@ -2574,7 +2631,11 @@
                 this.robotMood = 'default';
                 this.robotResetTimer = null;
                 this.triggerRobotFlicker();
+                this.scheduleNeutralBlink();
             }, 3000);
+            if (this.robotMood === 'default') {
+                this.scheduleNeutralBlink();
+            }
         },
         triggerRobotJump() {
             this.robotJumping = false;
@@ -2585,6 +2646,38 @@
                     this.robotJumpTimer = null;
                 }, 700);
             });
+        },
+        scheduleNeutralBlink() {
+            if (this.robotMood !== 'default' || this.robotHovering) {
+                return;
+            }
+            if (this.robotBlinkTimer) {
+                clearTimeout(this.robotBlinkTimer);
+                this.robotBlinkTimer = null;
+            }
+            const delay = 3500 + Math.random() * 3000;
+            this.robotBlinkTimer = setTimeout(() => {
+                this.robotBlinkTimer = null;
+                const blinkCount = Math.random() < 0.5 ? 2 : 1;
+                this.performBlink(blinkCount);
+            }, delay);
+        },
+        performBlink(count = 1) {
+            if (this.robotMood !== 'default' || this.robotHovering) {
+                this.robotEyesClosed = false;
+                return;
+            }
+            this.robotEyesClosed = true;
+            setTimeout(() => {
+                this.robotEyesClosed = false;
+                setTimeout(() => {
+                    if (count > 1) {
+                        this.performBlink(count - 1);
+                    } else {
+                        this.scheduleNeutralBlink();
+                    }
+                }, 90);
+            }, 160);
         },
         triggerRobotFlicker() {
             if (this.robotFlickerTimer) {
@@ -2606,9 +2699,9 @@
                 this.robotTooltip.timer = null;
             }
         },
-        showRobotTooltipMessage(message, { duration = 2800, auto = false, type = 'default', icon = '' } = {}) {
+        showRobotTooltipMessage(message, { duration = 4800, auto = false, type = 'default', icon = '' } = {}) {
             this.clearRobotTooltipTimer();
-            this.robotTooltip.message = message;
+            this.robotTooltip.message = this.highlightCommandNames(message || '');
             this.robotTooltip.visible = true;
             this.robotTooltip.auto = auto;
             this.robotTooltip.type = type || 'default';
@@ -2623,11 +2716,63 @@
                 }, duration);
             }
         },
-        announceRobot(message, { duration = 3200, mood = null, type = 'default', icon = '' } = {}) {
+        announceRobot(message, { duration = 5200, mood = null, type = 'default', icon = '' } = {}) {
             if (mood) {
                 this.updateRobotMood(mood);
             }
             this.showRobotTooltipMessage(message, { duration, auto: true, type, icon });
+            this.tutorialGuidance.persistentId = null;
+        },
+        showTutorialRobotHint(id, message) {
+            if (!message || this.robotHovering || this.robotMood !== 'default') {
+                return;
+            }
+            this.showRobotTooltipMessage(message, {
+                auto: false,
+                type: 'info',
+                icon: 'mdi-information-outline',
+            });
+            this.robotTooltip.auto = false;
+            this.tutorialGuidance.persistentId = id;
+        },
+        clearTutorialRobotHint(id = null) {
+            if (!this.tutorialGuidance.persistentId) {
+                return;
+            }
+            if (id && this.tutorialGuidance.persistentId !== id) {
+                return;
+            }
+            this.tutorialGuidance.persistentId = null;
+            if (!this.robotTooltip.auto) {
+                this.robotTooltip.visible = false;
+            }
+        },
+        maybeShowTutorialIntroHint() {
+            if (
+                !this.tutorial.active ||
+                this.tutorial.showIntro ||
+                this.tutorial.completed ||
+                !this.showCommandHint ||
+                this.tutorialGuidance.introShown
+            ) {
+                return;
+            }
+            this.showTutorialRobotHint('intro', 'Bienvenue dans le cockpit ! Clique sur le champ de saisie pour prendre les commandes.');
+            this.tutorialGuidance.introShown = true;
+        },
+        maybeShowTutorialHelpHint() {
+            if (
+                !this.tutorial.active ||
+                this.tutorial.showIntro ||
+                this.tutorial.completed ||
+                this.showCommandHint ||
+                this.tutorial.currentStep !== 0 ||
+                this.tutorialGuidance.helpHintShown
+            ) {
+                return;
+            }
+            this.showTutorialRobotHint('help', 'Tu es maintenant aux commandes. Besoin d’un coup de pouce ? Tape simplement `help`. Puis valide avec Entrée. ↵');
+            this.tutorialGuidance.helpHintShown = true;
         },
         buildTreePathNodes(startNode, endNode) {
             if (!startNode || !endNode) {
@@ -2784,7 +2929,10 @@
                     '/son/robot-talk-3.mp3',
                     '/son/robot-talk-birds.mp3',
                     '/son/robot-talk-r2d2.mp3',
-                    // '/son/robo-talk-creapy.mp3',
+                    // '/son/robot-talk-creapy.mp3',
+                    '/son/robot-talk-angelic.mp3',
+                    '/son/robot-talk-hahaha.mp3',
+                    '/son/robot-talk-heart.mp3',
                 ],
                 warning: [
                     '/son/robot-warning.mp3',
@@ -2796,6 +2944,9 @@
                 success: [
                     '/son/robot-succes-1.mp3',
                     '/son/robot-success-winlevel.mp3',
+                ],
+                beep: [
+                    '/son/robot-beep-1.mp3',
                 ],
             };
         },
@@ -2869,6 +3020,7 @@
                 warning: 2600,
                 error: 2800,
                 success: 3200,
+                beep: 1200,
             };
             const timeout = durationHints[type] || 2800;
             if (this.audioTimers[type]) {
@@ -2887,6 +3039,9 @@
                 this.stopAllActiveAudios();
             }
             this.showRobotSoundToast(nextState ? 'Son activé 🔊' : 'Son coupé 🔇');
+            if (nextState) {
+                this.playSoundEffect('beep');
+            }
         },
         showRobotSoundToast(message) {
             if (this.robotSoundToast.timer) {
@@ -2903,6 +3058,7 @@
         handleRobotHover() {
             this.robotHovering = true;
             this.clearRobotMoodTimers();
+            this.clearTutorialRobotHint();
             this.robotJumping = false;
             this.robotFlicker = false;
             this.robotMood = 'loving';
@@ -2924,6 +3080,7 @@
             this.clearRobotTooltipTimer();
             this.robotMood = 'default';
             this.triggerRobotFlicker();
+            this.scheduleNeutralBlink();
             this.stopTalkSound();
         },
         getRobotDialogue() {
@@ -2959,6 +3116,56 @@
             }
             const idx = Math.floor(Math.random() * pool.length);
             return pool[idx];
+        },
+        getMnemonicHint(stepId) {
+            const hints = {
+                pwd: 'Astuce mémo: `pwd` signifie **Path Way Directory**, pour afficher ta position actuelle.',
+                ls: 'Astuce mémo: `ls` vient de **List**, il affiche le contenu du dossier.',
+                'cd-documents': 'Astuce mémo: `cd` signifie **Change Directory**, idéal pour entrer dans un dossier.',
+                'cd-parent': 'Astuce mémo: `cd ..` remonte d’un cran — **Change Directory** vers le parent.',
+                'cd-documents-return': 'Astuce mémo: `cd documents` te ramène dans le dossier ciblé (**Change Directory**).',
+                'cd-mission': 'Astuce mémo: utilise `cd` (**Change Directory**) pour entrer dans mission.',
+                'rm-archives': 'Astuce mémo: `rm` vient de **Remove**, utile pour supprimer.',
+                'mkdir-mission': 'Astuce mémo: `mkdir` signifie **Make Directory**, pour créer un dossier.',
+                'touch-briefing': 'Astuce mémo: `touch` crée ou met à jour un fichier en une commande.',
+            };
+            return hints[stepId] || '';
+        },
+        escapeHtml(text = '') {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        },
+        highlightCommandNames(message = '') {
+            if (!message) {
+                return '';
+            }
+            let safeMessage = this.escapeHtml(message);
+            safeMessage = safeMessage.replace(/<code>(.+?)<\/code>/gi, (_m, content) => {
+                const highlighted = `<span class="robot-command">${content}</span>`;
+                return `<span class="robot-mnemonic">${highlighted}</span>`;
+            }).replace(/\*\*(.+?)\*\*/g, (_m, content) => {
+                const highlighted = `<span class="robot-command">${content}</span>`;
+                return `<span class="robot-mnemonic">${highlighted}</span>`;
+            });
+            const keywords = this.robotCommandKeywords || [];
+            if (keywords.length) {
+                const regex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'gi');
+                safeMessage = safeMessage.replace(regex, (match) => {
+                    return `<span class="robot-command">${match}</span>`;
+                });
+            }
+            return safeMessage;
+        },
+        truncateText(message, maxLength = 300) {
+            if (!message) {
+                return '';
+            }
+            if (message.length <= maxLength) {
+                return message;
+            }
+            return `${message.slice(0, maxLength)}...`;
         },
         extractRedirection(input = '') {
             let inDouble = false;
@@ -3359,6 +3566,16 @@ REMARQUES
             const message = args.join(' ');
             const finalMessage = interpret ? this.interpretEscapeSequences(message) : message;
             this.output = finalMessage;
+            const truncatedMessage = this.truncateText(finalMessage, 300);
+            if (truncatedMessage) {
+                this.showRobotTooltipMessage(truncatedMessage, {
+                    duration: 2800,
+                    auto: true,
+                    type: 'default',
+                    icon: 'mdi-message-text-outline',
+                });
+                this.playSoundEffect('beep');
+            }
             return finalMessage;
         },
         pathWayDirectory(){//pwd
@@ -4792,8 +5009,8 @@ REMARQUES
 <style lang="scss" model>
     .floating-robot {
         position: fixed;
-        top: 16px;
-        left: 16px;
+        top: 13px;
+        left: 13px;
         width: 500px;
         height: 70px;
         z-index: 1050;
@@ -4805,7 +5022,7 @@ REMARQUES
         .robot-sprite {
             position: absolute;
             left: 0;
-            width: 70px;
+            width: 80px;
             // width: 100%;
             height: auto;
             transform-origin: center;
@@ -4833,6 +5050,13 @@ REMARQUES
             display: flex;
             align-items: center;
             gap: 6px;
+            .robot-command {
+                font-weight: 600;
+                color: #8ae9ff;
+            }
+            .robot-mnemonic {
+                color: #ffe38f;
+            }
         }
         .robot-tooltip-icon {
             flex-shrink: 0;
@@ -5120,7 +5344,7 @@ REMARQUES
         right: 24px;
         z-index: 500;
         min-width: 280px;
-        max-width: 360px;
+        max-width: 460px;
         padding: 1px;
         border-radius: 16px;
         background: linear-gradient(135deg, rgba(15, 76, 92, 0.9), rgba(0, 153, 134, 0.95));

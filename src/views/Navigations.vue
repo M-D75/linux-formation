@@ -141,10 +141,11 @@
                                     size="small"
                                     color="blue"
                                     label
+                                    variant="elevated"
                                     class="suggestion-chip chip-fade-drop"
                                     @click="selectCommandSuggestion(cmd)"
                                 >
-                                    <span class="font-weight-bold">{{ cmd }}</span>
+                                    <span class="font-weight-medium">{{ cmd }}</span>
                                 </v-chip>
                             </template>
                         </v-tooltip>
@@ -242,6 +243,7 @@
                         v-if="tutorial.active && !tutorial.showIntro && !tutorial.completed"
                         class="tutorial-card"
                         variant="text"
+                        style="padding-bottom: 0px;"
                     >
                         <v-card-title class="text-subtitle-1">
                             {{ currentTutorialStep ? currentTutorialStep.title : '' }}
@@ -385,10 +387,14 @@
                 <!-- Command output section -->
                 <v-list 
                     class="output-cmd"
+                    :class="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 'output-cmd-tutorial' : ''"
                     ref="outputCmd"
                     base-color="white"
                     bg-color="#333"
-                    :height="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 205 : ''"
+                    :height="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 250 : ''"
+                    :style="{top: tutorial.active && !tutorial.showIntro && !tutorial.completed ? '25px' : '',
+                        'padding-bottom': tutorial.active && !tutorial.showIntro && !tutorial.completed ? '0px' : ''
+                    }"
                 >
                     <template
                         v-for="(cmd, index) in commandHistory"
@@ -2089,7 +2095,10 @@
                 let robotMessage = step.success || '';
                 const mnemonic = this.getMnemonicHint(step.id);
                 if (mnemonic) {
-                    robotMessage += ` ${mnemonic}`;
+                    const hintText = `💡 ${mnemonic}`;
+                    robotMessage = robotMessage
+                        ? `${robotMessage}\n${hintText}`
+                        : hintText;
                 }
                 if (robotMessage) {
                     this.announceRobot(robotMessage, {
@@ -3158,17 +3167,17 @@
         },
         getMnemonicHint(stepId) {
             const hints = {
-                pwd: 'Astuce mémo: `pwd` signifie **Path Way Directory**, pour afficher ta position actuelle.',
-                ls: 'Astuce mémo: `ls` vient de **List**, il affiche le contenu du dossier.',
-                'cd-documents': 'Astuce mémo: `cd` signifie **Change Directory**, idéal pour entrer dans un dossier.',
-                'cd-parent': 'Astuce mémo: `cd ..` remonte d’un cran — **Change Directory** vers le parent.',
-                'cd-documents-return': 'Astuce mémo: `cd documents` te ramène dans le dossier ciblé (**Change Directory**).',
-                'ls-documents': 'Astuce mémo: `ls` (pour **List**) confirme d’un coup d’œil ce que contient un dossier.',
-                'cd-mission': 'Astuce mémo: utilise `cd` (**Change Directory**) pour entrer dans mission.',
-                'rm-archives': 'Astuce mémo: `rm` vient de **Remove**, utile pour supprimer.',
-                'mkdir-mission': 'Astuce mémo: `mkdir` signifie **Make Directory**, pour créer un dossier.',
-                'ls-mission-check': 'Astuce mémo: un `ls` après `mkdir` te confirme instantanément que le dossier existe.',
-                'touch-briefing': 'Astuce mémo: `touch` crée ou met à jour un fichier en une commande.',
+                pwd: '[strong]Astuce mémo[/strong]: `pwd` signifie **Path Way Directory**, pour afficher ta position actuelle.',
+                ls: '[strong]Astuce mémo[/strong]: `ls` vient de **List**, il affiche le contenu du dossier.',
+                'cd-documents': '[strong]Astuce mémo[/strong]: `cd` signifie **Change Directory**, idéal pour entrer dans un dossier.',
+                'cd-parent': '[strong]Astuce mémo[/strong]: `cd ..` remonte d’un cran — **Change Directory** vers le parent.',
+                'cd-documents-return': '[strong]Astuce mémo[/strong]: `cd documents` te ramène dans le dossier ciblé (**Change Directory**).',
+                'ls-documents': '[strong]Astuce mémo[/strong]: `ls` (pour **List**) confirme d’un coup d’œil ce que contient un dossier.',
+                'cd-mission': '[strong]Astuce mémo[/strong]: utilise `cd` (**Change Directory**) pour entrer dans mission.',
+                'rm-archives': '[strong]Astuce mémo[/strong]: `rm` vient de **Remove**, utile pour supprimer.',
+                'mkdir-mission': '[strong]Astuce mémo[/strong]: `mkdir` signifie **Make Directory**, pour créer un dossier.',
+                'ls-mission-check': '[strong]Astuce mémo[/strong]: un `ls` après `mkdir` te confirme instantanément que le dossier existe.',
+                'touch-briefing': '[strong]Astuce mémo[/strong]: `touch` crée ou met à jour un fichier en une commande.',
             };
             return hints[stepId] || '';
         },
@@ -3183,6 +3192,8 @@
                 return '';
             }
             let safeMessage = this.escapeHtml(message);
+            safeMessage = safeMessage
+                .replace(/\[strong\](.+?)\[\/strong\]/gi, '<strong>$1</strong>');
             safeMessage = safeMessage.replace(/<code>(.+?)<\/code>/gi, (_m, content) => {
                 const highlighted = `<span class="robot-command">${content}</span>`;
                 return `<span class="robot-mnemonic">${highlighted}</span>`;
@@ -3197,6 +3208,7 @@
                     return `<span class="robot-command">${match}</span>`;
                 });
             }
+            safeMessage = safeMessage.replace(/\n/g, '<br>');
             return safeMessage;
         },
         truncateText(message, maxLength = 300) {
@@ -5052,7 +5064,7 @@ REMARQUES
         position: fixed;
         top: 13px;
         left: 13px;
-        width: 500px;
+        width: 550px;
         height: 70px;
         z-index: 1050;
         pointer-events: auto;

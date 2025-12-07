@@ -826,11 +826,11 @@
                         id: 'help',
                         title: '1. Découvre ton arsenal',
                         description: 'Tape <code>help</code> pour afficher toutes les commandes disponibles dans ce poste d’entraînement.',
-                        success: 'Tu sais comment obtenir la liste des commandes.'
+                        success: 'Tu sais maintenant comment obtenir la liste des commandes.'
                     },
                     {
                         id: 'pwd',
-                        title: '2. Repérer votre position',
+                        title: '2. Repérer ta position',
                         description: 'Tape <code>pwd</code> pour afficher le chemin comme <strong>root &gt; home &gt; user</strong>.',
                         success: 'Tu sais maintenant où tu te trouves.'
                     },
@@ -859,26 +859,38 @@
                         success: 'De retour dans documents, prêt pour la suite.'
                     },
                     {
+                        id: 'ls-documents',
+                        title: '7. Vérifier le contenu de documents',
+                        description: 'Affiche ce que contient <strong>documents</strong> avec <code>ls</code> avant de supprimer quoi que ce soit.',
+                        success: 'Tu as vérifié le contenu de documents.'
+                    },
+                    {
                         id: 'rm-archives',
-                        title: '7. Nettoyer les archives',
+                        title: '8. Nettoyer les archives',
                         description: 'Supprime l’ancien dossier <code>archives</code> avec <code>rm -r archives</code>.',
                         success: 'Archives nettoyées avec succès.'
                     },
                     {
                         id: 'mkdir-mission',
-                        title: '8. Préparer la mission',
+                        title: '9. Préparer la mission',
                         description: 'Crée un nouveau dossier <code>mission</code> (ex: <code>mkdir mission</code>) dans <strong>documents</strong>.',
                         success: 'Dossier mission créé.'
                     },
                     {
+                        id: 'ls-mission-check',
+                        title: '10. Confirmer la création',
+                        description: 'Exécute <code>ls</code> dans <strong>documents</strong> pour vérifier que le dossier <code>mission</code> est présent.',
+                        success: 'Mission est bien visible dans documents.'
+                    },
+                    {
                         id: 'cd-mission',
-                        title: '9. Entrer dans mission',
+                        title: '11. Entrer dans mission',
                         description: 'Déplace-toi dans le dossier <code>mission</code>.',
                         success: 'Mission est maintenant ton dossier courant.'
                     },
                     {
                         id: 'touch-briefing',
-                        title: '10. Créer le briefing',
+                        title: '12. Créer le briefing',
                         description: 'Crée un fichier <code>briefing.txt</code> (ex: <code>touch briefing.txt</code>) dans <strong>mission</strong>.',
                         success: 'Briefing.txt est en place, mission accomplie !'
                     },
@@ -2047,11 +2059,19 @@
                 case 'cd-documents-return':
                     success = normalizedCmd === 'cd' && currentPath.endsWith('/home/user/documents');
                     break;
+                case 'ls-documents':
+                    success = normalizedCmd === 'ls' && currentPath.endsWith('/home/user/documents');
+                    break;
                 case 'rm-archives':
                     success = !archivesNode;
                     break;
                 case 'mkdir-mission':
                     success = !!missionNode;
+                    break;
+                case 'ls-mission-check':
+                    success = normalizedCmd === 'ls'
+                        && currentPath.endsWith('/home/user/documents')
+                        && !!missionNode;
                     break;
                 case 'cd-mission':
                     success = normalizedCmd === 'cd' && currentPath.endsWith('/home/user/documents/mission');
@@ -2182,6 +2202,14 @@
                         return `Cette étape attend un retour vers 'documents', pas '${firstParam}'.`;
                     }
                     return 'On t’attend dans /home/user/documents avant de reprendre l’opération.';
+                case 'ls-documents':
+                    if (normalizedCmd !== 'ls') {
+                        return 'Utilise `ls` pour inspecter le contenu de `documents` avant d\'agir.';
+                    }
+                    if (!currentPath.endsWith('/home/user/documents')) {
+                        return 'Reviens dans /home/user/documents puis lance `ls` pour voir ce qu\'il contient.';
+                    }
+                    return 'Affiche la liste de documents avec `ls` pour confirmer ce qu\'il reste avant la suppression.';
                 case 'rm-archives':
                     if (normalizedCmd !== 'rm') {
                         return 'On attend la suppression du dossier `archives` avec `rm`.';
@@ -2210,6 +2238,17 @@
                         return `Le dossier attendu s'appelle 'mission', pas '${firstParam}'.`;
                     }
                     return 'Je ne vois toujours pas le dossier `mission` dans documents. Crée-le ici avant de continuer.';
+                case 'ls-mission-check':
+                    if (normalizedCmd !== 'ls') {
+                        return 'Vérifie la présence du dossier `mission` avec `ls`.';
+                    }
+                    if (!currentPath.endsWith('/home/user/documents')) {
+                        return 'Reste dans /home/user/documents pour contrôler que `mission` s\'y trouve.';
+                    }
+                    if (!missionExists) {
+                        return 'Crée d\'abord le dossier `mission`, puis relance `ls` pour le voir apparaître.';
+                    }
+                    return 'J\'attends le résultat de `ls` montrant `mission` dans documents.';
                 case 'cd-mission':
                     if (normalizedCmd !== 'cd') {
                         return 'Utilise `cd` pour te déplacer dans le dossier `mission`.';
@@ -3124,9 +3163,11 @@
                 'cd-documents': 'Astuce mémo: `cd` signifie **Change Directory**, idéal pour entrer dans un dossier.',
                 'cd-parent': 'Astuce mémo: `cd ..` remonte d’un cran — **Change Directory** vers le parent.',
                 'cd-documents-return': 'Astuce mémo: `cd documents` te ramène dans le dossier ciblé (**Change Directory**).',
+                'ls-documents': 'Astuce mémo: `ls` (pour **List**) confirme d’un coup d’œil ce que contient un dossier.',
                 'cd-mission': 'Astuce mémo: utilise `cd` (**Change Directory**) pour entrer dans mission.',
                 'rm-archives': 'Astuce mémo: `rm` vient de **Remove**, utile pour supprimer.',
                 'mkdir-mission': 'Astuce mémo: `mkdir` signifie **Make Directory**, pour créer un dossier.',
+                'ls-mission-check': 'Astuce mémo: un `ls` après `mkdir` te confirme instantanément que le dossier existe.',
                 'touch-briefing': 'Astuce mémo: `touch` crée ou met à jour un fichier en une commande.',
             };
             return hints[stepId] || '';

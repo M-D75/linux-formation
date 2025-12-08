@@ -243,7 +243,7 @@
                         v-if="tutorial.active && !tutorial.showIntro && !tutorial.completed"
                         class="tutorial-card"
                         variant="text"
-                        style="padding-bottom: 0px;"
+                        style="padding-bottom: 0px; margin-bottom: 0px;"
                     >
                         <v-card-title class="text-subtitle-1">
                             {{ currentTutorialStep ? currentTutorialStep.title : '' }}

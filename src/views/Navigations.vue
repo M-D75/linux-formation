@@ -1,5 +1,48 @@
 <template>
     <v-container>
+        <div class="session-banner">
+            <div class="session-banner__meta">
+                <v-chip
+                    size="small"
+                    variant="flat"
+                    :color="isParticipantSession ? 'primary' : (sessionMode === 'admin' ? 'deep-purple-accent-2' : 'blue-grey-darken-1')"
+                >
+                    {{ sessionModeLabel }}
+                </v-chip>
+                <span
+                    v-if="sessionParticipantName"
+                    class="session-banner__text"
+                >
+                    Participant: {{ sessionParticipantName }}
+                </span>
+                <span
+                    v-else-if="sessionMode === 'admin' && sessionCode"
+                    class="session-banner__text"
+                >
+                    Admin connecte a {{ sessionCode }}
+                </span>
+            </div>
+
+            <div class="session-banner__actions">
+                <v-btn
+                    class="session-banner__button"
+                    size="small"
+                    variant="flat"
+                    :to="{ name: 'session-access' }"
+                >
+                    Session
+                </v-btn>
+                <v-btn
+                    v-if="hasActiveSessionContext"
+                    class="session-banner__button session-banner__button--ghost"
+                    size="small"
+                    variant="flat"
+                    @click="leaveSessionMode"
+                >
+                    Quitter
+                </v-btn>
+            </div>
+        </div>
         <div
             class="floating-robot"
             @mouseenter="handleRobotHover"
@@ -710,6 +753,7 @@
   import * as d3 from 'd3';
   import $ from 'jquery';
   import { folderTree } from '../data/folderTree';
+  import { sessionClient } from '../services/sessionClient';
   
   export default {
     name: 'FolderTree',
@@ -756,6 +800,35 @@
             }
             return !this.availableCommands.some((cmd) => cmd.startsWith(term));
         },
+        sessionContext() {
+            return this.$store.state.sessionContext || {};
+        },
+        sessionMode() {
+            return this.sessionContext.mode || 'offline';
+        },
+        sessionCode() {
+            return this.sessionContext.sessionCode || '';
+        },
+        sessionParticipantName() {
+            return this.sessionContext.participantName || '';
+        },
+        sessionModeLabel() {
+            if (this.sessionMode === 'participant') {
+                return this.sessionCode ? `Session ${this.sessionCode}` : 'Mode session';
+            }
+            if (this.sessionMode === 'admin') {
+                return this.sessionCode ? `Admin ${this.sessionCode}` : 'Mode admin';
+            }
+            return 'Mode hors session';
+        },
+        isParticipantSession() {
+            return this.sessionMode === 'participant'
+                && !!this.sessionContext.participantToken
+                && !!this.sessionCode;
+        },
+        hasActiveSessionContext() {
+            return this.sessionMode !== 'offline';
+        },
     },
     watch: {
         command(val) {
@@ -772,6 +845,13 @@
             } else {
                 this.clearTutorialRobotHint('intro');
                 this.maybeShowTutorialHelpHint();
+            }
+        },
+        isParticipantSession(active) {
+            if (active) {
+                this.startParticipantTelemetry();
+            } else {
+                this.stopParticipantTelemetry();
             }
         },
     },
@@ -1072,6 +1152,10 @@
                 helpHintShown: false,
                 persistentId: null,
             },
+            telemetryQueue: [],
+            telemetryFlushPromise: null,
+            telemetryHeartbeatTimer: null,
+            telemetryLastError: '',
         };
     },
     mounted() {
@@ -1081,8 +1165,10 @@
         this.loadBadgeState();
         this.loadAudioEffects();
         this.scheduleNeutralBlink();
+        this.startParticipantTelemetry();
     },
     beforeUnmount() {
+        this.stopParticipantTelemetry();
         this.signalTimers.forEach((timer) => clearTimeout(timer));
         this.signalTimers = [];
         if (this.robotResetTimer) {
@@ -2015,6 +2101,11 @@
             this.tutorial.showSuccess = false;
             this.stats.tutorialCompleted = true;
             this.checkBadges();
+            this.queueTelemetryEvent('tutorial_completed', {
+                totalSteps: this.tutorial.steps.length,
+                currentStep: this.tutorial.currentStep,
+                path: this.getSessionPath(),
+            }, { immediate: true });
             this.announceRobot('🚀 Mission accomplie ! Tu peux poursuivre librement 🚀', {
                 duration: 4500,
                 mood: 'success',
@@ -2108,6 +2199,13 @@
                         icon: 'mdi-check-circle',
                     });
                 }
+                this.queueTelemetryEvent('tutorial_step_completed', {
+                    stepId: step.id,
+                    stepIndex: this.tutorial.currentStep,
+                    totalSteps: this.tutorial.steps.length,
+                    command: normalizedCmd,
+                    path: currentPath,
+                }, { immediate: true });
                 this.tutorial.currentStep += 1;
                 if (this.tutorial.currentStep > 0) {
                     this.clearTutorialRobotHint('help');
@@ -2376,6 +2474,107 @@
             }
             this.persistBadges();
         },
+        leaveSessionMode() {
+            this.stopParticipantTelemetry();
+            this.$store.commit('clearSessionContext');
+            this.telemetryQueue = [];
+            this.telemetryLastError = '';
+        },
+        getSessionPath() {
+            if (this.currentNode) {
+                const rawPath = this.getPath(this.currentNode);
+                const normalized = rawPath ? (rawPath.replace('root', '') || '/') : '/';
+                return normalized || '/';
+            }
+            return this.pwd || '/';
+        },
+        queueTelemetryEvent(type, payload = {}, options = {}) {
+            if (!this.isParticipantSession) {
+                return;
+            }
+
+            this.telemetryQueue.push({
+                type,
+                timestamp: new Date().toISOString(),
+                payload: {
+                    ...payload,
+                    path: typeof payload.path === 'string' && payload.path.trim()
+                        ? payload.path.trim()
+                        : this.getSessionPath(),
+                },
+            });
+
+            if (this.telemetryQueue.length > 100) {
+                this.telemetryQueue = this.telemetryQueue.slice(-100);
+            }
+
+            if (options.immediate) {
+                this.flushTelemetryQueue();
+            }
+        },
+        async flushTelemetryQueue() {
+            if (!this.isParticipantSession) {
+                this.telemetryQueue = [];
+                return;
+            }
+
+            if (this.telemetryFlushPromise) {
+                return this.telemetryFlushPromise;
+            }
+
+            if (this.telemetryQueue.length === 0) {
+                return;
+            }
+
+            const batch = this.telemetryQueue.slice(0, 50);
+            this.telemetryQueue = this.telemetryQueue.slice(batch.length);
+
+            this.telemetryFlushPromise = sessionClient.sendEvents(
+                this.sessionCode,
+                this.sessionContext.participantToken,
+                batch,
+            )
+                .catch((error) => {
+                    this.telemetryQueue = [...batch, ...this.telemetryQueue].slice(-100);
+                    this.telemetryLastError = error?.message || 'Erreur de synchronisation';
+                })
+                .finally(() => {
+                    this.telemetryFlushPromise = null;
+                    if (this.telemetryQueue.length > 0 && this.isParticipantSession) {
+                        setTimeout(() => {
+                            this.flushTelemetryQueue();
+                        }, 400);
+                    }
+                });
+
+            return this.telemetryFlushPromise;
+        },
+        startParticipantTelemetry() {
+            if (!this.isParticipantSession || this.telemetryHeartbeatTimer) {
+                return;
+            }
+
+            this.queueTelemetryEvent('heartbeat', {
+                currentStep: this.tutorial.currentStep,
+                currentStepId: this.currentTutorialStep?.id || null,
+            }, { immediate: true });
+
+            this.telemetryHeartbeatTimer = setInterval(() => {
+                this.queueTelemetryEvent('heartbeat', {
+                    currentStep: this.tutorial.currentStep,
+                    currentStepId: this.currentTutorialStep?.id || null,
+                });
+                this.flushTelemetryQueue();
+            }, 15000);
+        },
+        stopParticipantTelemetry() {
+            if (this.telemetryHeartbeatTimer) {
+                clearInterval(this.telemetryHeartbeatTimer);
+                this.telemetryHeartbeatTimer = null;
+            }
+
+            this.flushTelemetryQueue();
+        },
         openBadgePanel() {
             this.showBadgePanel = true;
             if (this.badgeSnackbar.timeoutId) {
@@ -2610,6 +2809,13 @@
                 tooltip,
             });
             this.saveCommandHistory();
+            this.queueTelemetryEvent('command_executed', {
+                command: commandText,
+                state,
+                currentStep: this.tutorial.currentStep,
+                currentStepId: this.currentTutorialStep?.id || null,
+                path: this.getSessionPath(),
+            }, { immediate: true });
             setTimeout(() => {
                 $(".output-cmd").scrollTop($(".output-cmd")[0].scrollHeight+500)
             }, 50);
@@ -5060,6 +5266,51 @@ REMARQUES
 </script>
   
 <style lang="scss" model>
+    .session-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+        padding: 12px 14px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(8, 33, 46, 0.94), rgba(18, 92, 121, 0.9));
+        box-shadow: 0 12px 24px rgba(9, 24, 34, 0.18);
+    }
+
+    .session-banner__meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        color: #ecf7fb;
+    }
+
+    .session-banner__text {
+        font-size: 0.86rem;
+        opacity: 0.92;
+    }
+
+    .session-banner__actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .session-banner :deep(.session-banner__button) {
+        background: rgba(244, 250, 252, 0.95);
+        color: #0b3344;
+        border-radius: 999px;
+        font-weight: 600;
+        box-shadow: 0 8px 16px rgba(3, 12, 18, 0.15);
+    }
+
+    .session-banner :deep(.session-banner__button--ghost) {
+        background: rgba(225, 239, 245, 0.78);
+        color: #173b4b;
+    }
+
     .floating-robot {
         position: fixed;
         top: 13px;

@@ -14,6 +14,13 @@ export default defineConfig({
   plugins: [
     vue(),
   ],
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern',
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

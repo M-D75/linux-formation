@@ -4,18 +4,18 @@
             <v-col cols="12" lg="10">
                 <div class="admin-dashboard__header">
                     <div>
-                        <div class="admin-dashboard__eyebrow">Espace formateur</div>
-                        <h1 class="admin-dashboard__title">Suivi de session</h1>
+                        <div class="admin-dashboard__eyebrow">{{ t('admin.eyebrow') }}</div>
+                        <h1 class="admin-dashboard__title">{{ t('admin.title') }}</h1>
                         <p class="admin-dashboard__subtitle">
-                            Cree des sessions, retrouve-les facilement et suis la progression des participants.
+                            {{ t('admin.subtitle') }}
                         </p>
                     </div>
                     <div class="admin-dashboard__header-actions">
                         <v-btn variant="text" :to="{ name: 'session-access' }">
-                            Rejoindre une session
+                            {{ t('admin.joinSession') }}
                         </v-btn>
                         <v-btn variant="text" :to="{ name: 'home' }">
-                            Retour a la plateforme
+                            {{ t('admin.backToPlatform') }}
                         </v-btn>
                         <v-btn
                             v-if="adminUnlocked"
@@ -23,7 +23,7 @@
                             color="error"
                             @click="lockAdminAccess"
                         >
-                            Verrouiller
+                            {{ t('admin.lock') }}
                         </v-btn>
                     </div>
                 </div>
@@ -33,14 +33,14 @@
         <v-row v-if="!adminUnlocked" justify="center" class="mb-6">
             <v-col cols="12" md="7" lg="5">
                 <v-card class="admin-card" elevation="10">
-                    <v-card-title>Espace formateur</v-card-title>
+                    <v-card-title>{{ t('admin.eyebrow') }}</v-card-title>
                     <v-card-text>
                         <p class="text-body-2 mb-4">
-                            Saisis le mot de passe formateur pour creer des sessions et consulter le suivi des participants.
+                            {{ t('admin.passwordDescription') }}
                         </p>
                         <v-text-field
                             v-model="adminPassword"
-                            label="Mot de passe formateur"
+                            :label="t('admin.trainerPassword')"
                             type="password"
                             variant="outlined"
                             autocomplete="current-password"
@@ -56,7 +56,7 @@
                     </v-card-text>
                     <v-card-actions class="admin-card__actions">
                         <v-btn color="primary" :loading="accessLoading" block @click="unlockAdminAccess">
-                            Acceder au suivi
+                            {{ t('admin.accessTracking') }}
                         </v-btn>
                     </v-card-actions>
                 </v-card>
@@ -66,13 +66,13 @@
         <v-row v-if="adminUnlocked" justify="center" class="mb-6">
             <v-col cols="12" md="5">
                 <v-card class="admin-card" elevation="8">
-                    <v-card-title>Creer une session</v-card-title>
+                    <v-card-title>{{ t('admin.createSession') }}</v-card-title>
                     <v-card-text>
                         <v-text-field
                             v-model="newSessionLabel"
-                            label="Nom de session"
+                            :label="t('admin.sessionName')"
                             variant="outlined"
-                            placeholder="Cours Linux - groupe A"
+                            :placeholder="t('admin.sessionNamePlaceholder')"
                         />
                         <v-alert
                             v-if="createError"
@@ -84,7 +84,7 @@
                     </v-card-text>
                     <v-card-actions class="admin-card__actions">
                         <v-btn color="primary" :loading="createLoading" block @click="createSession">
-                            Creer
+                            {{ t('admin.create') }}
                         </v-btn>
                     </v-card-actions>
                 </v-card>
@@ -92,11 +92,11 @@
 
             <v-col cols="12" md="5">
                 <v-card class="admin-card" elevation="8">
-                    <v-card-title>Ouvrir une session existante</v-card-title>
+                    <v-card-title>{{ t('admin.openExistingSession') }}</v-card-title>
                     <v-card-text>
                         <v-text-field
                             v-model="manualSessionCode"
-                            label="Code de session"
+                            :label="t('session.sessionCode')"
                             variant="outlined"
                             maxlength="6"
                             placeholder="ABC123"
@@ -104,9 +104,9 @@
                         />
                         <v-text-field
                             v-model="manualAdminToken"
-                            label="Cle d'administration"
+                            :label="t('admin.adminKey')"
                             variant="outlined"
-                            placeholder="Cle de la session"
+                            :placeholder="t('admin.adminKeyPlaceholder')"
                         />
                         <v-alert
                             v-if="loadError"
@@ -119,7 +119,7 @@
                     </v-card-text>
                     <v-card-actions class="admin-card__actions">
                         <v-btn color="primary" :loading="loadLoading" block @click="connectToExistingSession">
-                            Ouvrir
+                            {{ t('common.open') }}
                         </v-btn>
                     </v-card-actions>
                 </v-card>
@@ -131,25 +131,25 @@
                 <v-card class="admin-card" elevation="8">
                     <v-card-title class="admin-session__title">
                         <div>
-                            <div class="text-subtitle-1">Sessions disponibles</div>
+                            <div class="text-subtitle-1">{{ t('admin.availableSessions') }}</div>
                             <div class="text-caption text-medium-emphasis">
-                                {{ sessionsList.length }} session(s) creee(s). Choisis un code pour preparer l'ouverture d'une session.
+                                {{ t('admin.availableSessionsCaption', { count: sessionsList.length }) }}
                             </div>
                         </div>
                         <v-btn size="small" variant="outlined" @click="refreshSessionsList">
-                            Actualiser
+                            {{ t('common.refresh') }}
                         </v-btn>
                     </v-card-title>
                     <v-card-text>
                         <v-table class="admin-session__table">
                             <thead>
                                 <tr>
-                                    <th>Session</th>
-                                    <th>Statut</th>
-                                    <th>Participants</th>
-                                    <th>Commandes</th>
-                                    <th>Creation</th>
-                                    <th>Action</th>
+                                    <th>{{ t('admin.session') }}</th>
+                                    <th>{{ t('common.status') }}</th>
+                                    <th>{{ t('common.participants') }}</th>
+                                    <th>{{ t('common.commands') }}</th>
+                                    <th>{{ t('admin.creation') }}</th>
+                                    <th>{{ t('common.action') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -164,7 +164,7 @@
                                             :color="sessionItem.status === 'active' ? 'green' : 'blue-grey'"
                                             variant="tonal"
                                         >
-                                            {{ sessionItem.status }}
+                                            {{ formatState(sessionItem.status) }}
                                         </v-chip>
                                     </td>
                                     <td>{{ sessionItem.metrics?.participantsCount || 0 }}</td>
@@ -177,13 +177,13 @@
                                             color="primary"
                                             @click="openSessionFromList(sessionItem)"
                                         >
-                                            Utiliser ce code
+                                            {{ t('admin.useCode') }}
                                         </v-btn>
                                     </td>
                                 </tr>
                                 <tr v-if="sessionsList.length === 0">
                                     <td colspan="6" class="text-center text-medium-emphasis">
-                                        Aucune session creee pour le moment.
+                                        {{ t('admin.noSessions') }}
                                     </td>
                                 </tr>
                             </tbody>
@@ -198,7 +198,7 @@
                 <v-card class="admin-card" elevation="10">
                     <v-card-title class="admin-session__title">
                         <div>
-                            <div class="text-caption">Session active</div>
+                            <div class="text-caption">{{ t('admin.activeSession') }}</div>
                             <div class="text-h5">{{ snapshot?.label || activeSessionLabel || activeSessionCode }}</div>
                         </div>
                         <v-chip color="primary" size="small" variant="flat">
@@ -208,40 +208,40 @@
                     <v-card-text>
                         <div class="admin-session__metrics">
                             <v-chip color="blue" variant="tonal">
-                                Participants: {{ sessionMetrics.participantsCount || 0 }}
+                                {{ t('common.participants') }}: {{ sessionMetrics.participantsCount || 0 }}
                             </v-chip>
                             <v-chip color="green" variant="tonal">
-                                Commandes: {{ sessionMetrics.commandsCount || 0 }}
+                                {{ t('common.commands') }}: {{ sessionMetrics.commandsCount || 0 }}
                             </v-chip>
                             <v-chip color="red" variant="tonal">
-                                Erreurs: {{ sessionMetrics.errorsCount || 0 }}
+                                {{ t('common.errors') }}: {{ sessionMetrics.errorsCount || 0 }}
                             </v-chip>
                             <v-chip color="amber" variant="tonal">
-                                Completes: {{ sessionMetrics.completedCount || 0 }}
+                                {{ t('admin.completed') }}: {{ sessionMetrics.completedCount || 0 }}
                             </v-chip>
                             <v-chip color="cyan-darken-1" variant="tonal">
-                                Intervalle moyen: {{ formatDurationMs(sessionMetrics.averageGapMs) }}
+                                {{ t('admin.averageGap', { value: formatDurationMs(sessionMetrics.averageGapMs) }) }}
                             </v-chip>
                             <v-chip color="teal-darken-1" variant="tonal">
-                                Intervalle moyen par participant: {{ formatDurationMs(sessionMetrics.averageParticipantGapMs) }}
+                                {{ t('admin.averageParticipantGap', { value: formatDurationMs(sessionMetrics.averageParticipantGapMs) }) }}
                             </v-chip>
                             <v-chip color="deep-purple-accent-2" variant="tonal">
-                                Rythme moyen: {{ sessionMetrics.commandsPerMinute ?? '-' }} / min
+                                {{ t('admin.averageRate', { value: sessionMetrics.commandsPerMinute ?? '-' }) }}
                             </v-chip>
                         </div>
 
                         <div class="admin-session__actions">
                             <v-btn size="small" variant="outlined" @click="copySessionCode">
-                                Copier le code
+                                {{ t('admin.copyCode') }}
                             </v-btn>
                             <v-btn size="small" variant="outlined" @click="refreshSnapshot">
-                                Rafraichir
+                                {{ t('common.refresh') }}
                             </v-btn>
                             <v-btn size="small" color="error" variant="outlined" @click="closeActiveSession">
-                                Fermer la session
+                                {{ t('admin.closeSession') }}
                             </v-btn>
                             <v-btn size="small" variant="text" @click="clearAdminContext">
-                                Masquer cette session
+                                {{ t('admin.hideSession') }}
                             </v-btn>
                         </div>
 
@@ -257,14 +257,14 @@
                         <v-table class="mt-6 admin-session__table">
                             <thead>
                                 <tr>
-                                    <th>Participant</th>
-                                    <th>Commandes</th>
-                                    <th>Erreurs</th>
-                                    <th>Etape</th>
-                                    <th>Intervalle moyen</th>
-                                    <th>Dernier intervalle</th>
-                                    <th>Chemin</th>
-                                    <th>Derniere activite</th>
+                                    <th>{{ t('common.participant') }}</th>
+                                    <th>{{ t('common.commands') }}</th>
+                                    <th>{{ t('common.errors') }}</th>
+                                    <th>{{ t('admin.step') }}</th>
+                                    <th>{{ t('admin.averageGapLabel') }}</th>
+                                    <th>{{ t('admin.lastGap') }}</th>
+                                    <th>{{ t('admin.path') }}</th>
+                                    <th>{{ t('admin.lastActivity') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -272,10 +272,10 @@
                                     <td>
                                         <div class="font-weight-medium">{{ participant.nickname }}</div>
                                         <div class="text-caption">
-                                            {{ participant.email || 'Mail non renseigne' }}
+                                            {{ participant.email || t('admin.emailMissing') }}
                                         </div>
                                         <div class="text-caption">
-                                            {{ participant.completed ? 'Tutoriel termine' : 'En cours' }}
+                                            {{ participant.completed ? t('admin.tutorialCompleted') : t('admin.inProgress') }}
                                         </div>
                                     </td>
                                     <td>{{ participant.commandsCount }}</td>
@@ -288,7 +288,7 @@
                                 </tr>
                                 <tr v-if="participants.length === 0">
                                     <td colspan="8" class="text-center text-medium-emphasis">
-                                        Aucun participant pour le moment.
+                                        {{ t('admin.noParticipants') }}
                                     </td>
                                 </tr>
                             </tbody>
@@ -301,7 +301,90 @@
         <v-row v-if="adminUnlocked && activeSessionCode && activeAdminToken" justify="center" class="mt-2">
             <v-col cols="12" lg="10">
                 <v-card class="admin-card" elevation="8">
-                    <v-card-title>Rythme des commandes</v-card-title>
+                    <v-card-title class="admin-session__title">
+                        <div>
+                            <div>{{ t('admin.teachingSignals') }}</div>
+                            <div class="text-caption text-medium-emphasis">
+                                {{ t('admin.teachingSignalsCaption') }}
+                            </div>
+                        </div>
+                    </v-card-title>
+                    <v-card-text>
+                        <div class="teaching-signals">
+                            <section class="teaching-signals__panel">
+                                <div class="teaching-signals__heading">
+                                    <v-icon size="18">mdi-account-alert-outline</v-icon>
+                                    {{ t('admin.participantsToHelp') }}
+                                </div>
+                                <div
+                                    v-for="participant in participantsToHelp"
+                                    :key="participant.id"
+                                    class="teaching-signals__row"
+                                >
+                                    <div>
+                                        <div class="font-weight-medium">{{ participant.nickname }}</div>
+                                        <div class="text-caption text-medium-emphasis">
+                                            {{ t('admin.participantHelpLine', { errors: participant.errorsCount || 0, commands: participant.commandsCount || 0 }) }}
+                                        </div>
+                                    </div>
+                                    <v-chip size="x-small" color="amber" variant="tonal">
+                                        {{ t('admin.participantStuckLine', { step: formatStep(participant) }) }}
+                                    </v-chip>
+                                </div>
+                                <div v-if="participantsToHelp.length === 0" class="text-medium-emphasis text-body-2">
+                                    {{ t('admin.noTeachingSignals') }}
+                                </div>
+                            </section>
+
+                            <section class="teaching-signals__panel">
+                                <div class="teaching-signals__heading">
+                                    <v-icon size="18">mdi-alert-circle-outline</v-icon>
+                                    {{ t('admin.commonMistakes') }}
+                                </div>
+                                <div
+                                    v-for="issue in recurringCommandIssues"
+                                    :key="issue.command"
+                                    class="teaching-signals__row"
+                                >
+                                    <code>{{ issue.command }}</code>
+                                    <v-chip size="x-small" color="red" variant="tonal">
+                                        {{ t('admin.issueCount', { count: issue.count }) }}
+                                    </v-chip>
+                                </div>
+                                <div v-if="recurringCommandIssues.length === 0" class="text-medium-emphasis text-body-2">
+                                    {{ t('admin.noTeachingSignals') }}
+                                </div>
+                            </section>
+
+                            <section class="teaching-signals__panel">
+                                <div class="teaching-signals__heading">
+                                    <v-icon size="18">mdi-map-marker-alert-outline</v-icon>
+                                    {{ t('admin.stepBottlenecks') }}
+                                </div>
+                                <div
+                                    v-for="step in stepBottlenecks"
+                                    :key="step.label"
+                                    class="teaching-signals__row"
+                                >
+                                    <span>{{ step.label }}</span>
+                                    <v-chip size="x-small" color="blue" variant="tonal">
+                                        {{ t('admin.issueCount', { count: step.count }) }}
+                                    </v-chip>
+                                </div>
+                                <div v-if="stepBottlenecks.length === 0" class="text-medium-emphasis text-body-2">
+                                    {{ t('admin.noTeachingSignals') }}
+                                </div>
+                            </section>
+                        </div>
+                    </v-card-text>
+                </v-card>
+            </v-col>
+        </v-row>
+
+        <v-row v-if="adminUnlocked && activeSessionCode && activeAdminToken" justify="center" class="mt-2">
+            <v-col cols="12" lg="10">
+                <v-card class="admin-card" elevation="8">
+                    <v-card-title>{{ t('admin.commandRate') }}</v-card-title>
                     <v-card-text>
                         <div v-if="timeline.length" class="timeline-bars">
                             <div v-for="bucket in timeline" :key="bucket.bucketStart" class="timeline-bars__row">
@@ -315,13 +398,13 @@
                                     ></div>
                                 </div>
                                 <div class="timeline-bars__value">
-                                    {{ bucket.count }} commande(s)
+                                    {{ t('admin.commandCount', { count: bucket.count }) }}
                                     ({{ bucket.successCount }}/{{ bucket.warningCount }}/{{ bucket.errorCount }})
                                 </div>
                             </div>
                         </div>
                         <div v-else class="text-medium-emphasis">
-                            Aucun historique temporel disponible.
+                            {{ t('admin.noTimeline') }}
                         </div>
                     </v-card-text>
                 </v-card>
@@ -333,15 +416,15 @@
                 <v-card class="admin-card" elevation="8">
                     <v-card-title class="admin-session__title">
                         <div>
-                            <div>Historique des commandes</div>
+                            <div>{{ t('admin.commandHistory') }}</div>
                             <div class="text-caption text-medium-emphasis">
-                                Retrouve rapidement un participant et classe les commandes par heure, participant ou statut.
+                                {{ t('admin.commandHistoryCaption') }}
                             </div>
                         </div>
                         <div class="history-toolbar">
                             <v-text-field
                                 v-model="historySearch"
-                                label="Rechercher un participant"
+                                :label="t('admin.searchParticipant')"
                                 variant="outlined"
                                 density="compact"
                                 hide-details
@@ -358,40 +441,40 @@
                                 <tr>
                                     <th>
                                         <button class="history-sort-button" type="button" @click="setHistorySort('createdAt')">
-                                            Heure
+                                            {{ t('admin.time') }}
                                             <v-icon size="16">{{ getSortIcon('createdAt') }}</v-icon>
                                         </button>
                                     </th>
                                     <th>
                                         <button class="history-sort-button" type="button" @click="setHistorySort('participantName')">
-                                            Participant
+                                            {{ t('common.participant') }}
                                             <v-icon size="16">{{ getSortIcon('participantName') }}</v-icon>
                                         </button>
                                     </th>
-                                    <th>Commande</th>
+                                    <th>{{ t('admin.command') }}</th>
                                     <th>
                                         <button class="history-sort-button" type="button" @click="setHistorySort('state')">
-                                            Statut
+                                            {{ t('common.status') }}
                                             <v-icon size="16">{{ getSortIcon('state') }}</v-icon>
                                         </button>
                                     </th>
-                                    <th>Depuis la precedente</th>
-                                    <th>Depuis la precedente du participant</th>
-                                    <th>Chemin</th>
+                                    <th>{{ t('admin.sincePrevious') }}</th>
+                                    <th>{{ t('admin.sinceParticipantPrevious') }}</th>
+                                    <th>{{ t('admin.path') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr v-for="entry in filteredCommandHistory" :key="entry.id">
                                     <td>{{ formatDate(entry.createdAt) }}</td>
                                     <td>{{ entry.participantName }}</td>
-                                    <td><code>{{ entry.command || '(vide)' }}</code></td>
+                                    <td><code>{{ entry.command || t('admin.emptyCommand') }}</code></td>
                                     <td>
                                         <v-chip
                                             size="small"
                                             :color="getStateColor(entry.state)"
                                             variant="tonal"
                                         >
-                                            {{ entry.state }}
+                                            {{ formatState(entry.state) }}
                                         </v-chip>
                                     </td>
                                     <td>{{ formatDurationMs(entry.gapFromPreviousMs) }}</td>
@@ -400,7 +483,7 @@
                                 </tr>
                                 <tr v-if="filteredCommandHistory.length === 0">
                                     <td colspan="7" class="text-center text-medium-emphasis">
-                                        Aucune commande ne correspond au filtre actuel.
+                                        {{ t('admin.noHistoryMatch') }}
                                     </td>
                                 </tr>
                             </tbody>
@@ -417,6 +500,7 @@
     import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
     import { useStore } from 'vuex';
 
+    import { currentLocale, t } from '../i18n';
     import { sessionClient } from '../services/sessionClient';
 
     const POLLING_INTERVAL_MS = 3000;
@@ -480,6 +564,49 @@
 
         return sorted;
     });
+    const participantsToHelp = computed(() => {
+        return [...participants.value]
+            .filter((participant) => !participant.completed || (participant.errorsCount || 0) > 0)
+            .map((participant) => ({
+                ...participant,
+                helpScore: (participant.errorsCount || 0) * 3
+                    + (!participant.completed ? 1 : 0)
+                    + (participant.analytics?.lastGapMs && participant.analytics.lastGapMs > 120000 ? 1 : 0),
+            }))
+            .sort((left, right) => right.helpScore - left.helpScore)
+            .slice(0, 5);
+    });
+    const recurringCommandIssues = computed(() => {
+        const counts = new Map();
+        (snapshot.value?.commandHistory || []).forEach((entry) => {
+            if (!['error', 'warning'].includes(entry.state)) {
+                return;
+            }
+            const command = (entry.command || '').trim().split(/\s+/)[0] || t('admin.emptyCommand');
+            counts.set(command, (counts.get(command) || 0) + 1);
+        });
+
+        return [...counts.entries()]
+            .map(([command, count]) => ({ command, count }))
+            .sort((left, right) => right.count - left.count || left.command.localeCompare(right.command))
+            .slice(0, 5);
+    });
+    const stepBottlenecks = computed(() => {
+        const counts = new Map();
+        participants.value.forEach((participant) => {
+            if (participant.completed) {
+                return;
+            }
+            const label = participant.currentStepId
+                || (participant.currentStep ? t('admin.formatStepNumber', { step: participant.currentStep }) : t('admin.unknownStep'));
+            counts.set(label, (counts.get(label) || 0) + 1);
+        });
+
+        return [...counts.entries()]
+            .map(([label, count]) => ({ label, count }))
+            .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+            .slice(0, 5);
+    });
     const maxTimelineCount = computed(() => {
         if (!timeline.value.length) {
             return 1;
@@ -530,7 +657,7 @@
             startPolling();
         } catch (error) {
             adminUnlocked.value = false;
-            accessError.value = error?.message || 'Mot de passe formateur invalide.';
+            accessError.value = error?.message || t('admin.invalidPassword');
         } finally {
             accessLoading.value = false;
         }
@@ -557,7 +684,7 @@
             const response = await sessionClient.getAdminSessions(adminPassword.value.trim());
             sessionsList.value = response?.sessions || [];
         } catch (error) {
-            loadError.value = error?.message || 'Impossible de recuperer les sessions.';
+            loadError.value = error?.message || t('admin.sessionsLoadFailed');
         } finally {
             if (!silent) {
                 loadLoading.value = false;
@@ -583,7 +710,7 @@
             );
             snapshot.value = response?.session || null;
         } catch (error) {
-            loadError.value = error?.message || 'Impossible de charger la session.';
+            loadError.value = error?.message || t('admin.sessionLoadFailed');
         } finally {
             if (!silent) {
                 loadLoading.value = false;
@@ -607,12 +734,12 @@
                 response?.admin?.token || '',
             );
             snapshot.value = response?.session || null;
-            actionInfo.value = 'Session admin creee.';
+            actionInfo.value = t('admin.sessionCreated');
             await refreshSessionsList({ silent: true });
             await refreshSnapshot();
             startPolling();
         } catch (error) {
-            createError.value = error?.message || 'Impossible de creer la session.';
+            createError.value = error?.message || t('admin.createFailed');
         } finally {
             createLoading.value = false;
         }
@@ -640,7 +767,7 @@
             await refreshSessionsList({ silent: true });
             startPolling();
         } catch (error) {
-            loadError.value = error?.message || 'Impossible de charger cette session.';
+            loadError.value = error?.message || t('admin.existingSessionLoadFailed');
         } finally {
             loadLoading.value = false;
         }
@@ -661,12 +788,12 @@
                 adminPassword.value.trim(),
             );
             snapshot.value = response?.session || null;
-            actionInfo.value = 'Session fermee.';
+            actionInfo.value = t('admin.sessionClosed');
             await refreshSessionsList({ silent: true });
             stopPolling();
             startPolling();
         } catch (error) {
-            loadError.value = error?.message || 'Impossible de fermer la session.';
+            loadError.value = error?.message || t('admin.closeFailed');
         } finally {
             loadLoading.value = false;
         }
@@ -679,7 +806,7 @@
 
         manualSessionCode.value = sessionItem.code;
         manualAdminToken.value = '';
-        actionInfo.value = `Code ${sessionItem.code} repris. Saisis maintenant la cle d'administration pour ouvrir cette session.`;
+        actionInfo.value = t('admin.codeReady', { code: sessionItem.code });
     };
 
     const clearAdminContext = () => {
@@ -698,7 +825,7 @@
         }
 
         await navigator.clipboard.writeText(activeSessionCode.value);
-        actionInfo.value = `Code ${activeSessionCode.value} copie.`;
+        actionInfo.value = t('admin.codeCopied', { code: activeSessionCode.value });
     };
 
     const formatDate = (value) => {
@@ -711,20 +838,27 @@
             return value;
         }
 
-        return date.toLocaleString();
+        const locale = currentLocale.value === 'fr' ? 'fr-FR' : 'en-US';
+        return date.toLocaleString(locale);
     };
 
     const formatStep = (participant) => {
         if (participant.completed) {
-            return 'Complete';
+            return t('admin.formatStepCompleted');
         }
         if (participant.currentStepId) {
             return participant.currentStepId;
         }
         if (participant.currentStep) {
-            return `Etape ${participant.currentStep}`;
+            return t('admin.formatStepNumber', { step: participant.currentStep });
         }
         return '-';
+    };
+
+    const formatState = (state) => {
+        const key = `admin.states.${state}`;
+        const label = t(key);
+        return label === key ? state : label;
     };
 
     const formatDurationMs = (value) => {
@@ -856,6 +990,42 @@
         margin-top: 16px;
     }
 
+    .teaching-signals {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .teaching-signals__panel {
+        min-width: 0;
+        border: 1px solid rgba(69, 90, 100, 0.16);
+        border-radius: 8px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.56);
+    }
+
+    .teaching-signals__heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        color: #173847;
+        font-weight: 700;
+    }
+
+    .teaching-signals__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 0;
+        border-top: 1px solid rgba(69, 90, 100, 0.1);
+    }
+
+    .teaching-signals__row:first-of-type {
+        border-top: 0;
+    }
+
     .admin-session__table {
         border-radius: 16px;
         overflow: hidden;
@@ -949,6 +1119,10 @@
         }
 
         .timeline-bars__row {
+            grid-template-columns: 1fr;
+        }
+
+        .teaching-signals {
             grid-template-columns: 1fr;
         }
     }

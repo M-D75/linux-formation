@@ -1,14 +1,42 @@
 <script setup>
+    import { computed } from 'vue'
     import { RouterView } from 'vue-router'
+    import { availableLocales, currentLocale, setLocale, t } from './i18n'
     // import HelloWorld from './components/HelloWorld.vue'
+
+    const selectedLocale = computed({
+        get: () => currentLocale.value,
+        set: (locale) => setLocale(locale),
+    })
 </script>
 
 <template>
     <v-app>
+        <div class="language-switcher">
+            <span class="language-switcher__label">{{ t('app.language') }}</span>
+            <v-btn-toggle
+                v-model="selectedLocale"
+                mandatory
+                density="compact"
+                variant="outlined"
+                color="primary"
+                divided
+            >
+                <v-btn
+                    v-for="locale in availableLocales"
+                    :key="locale.code"
+                    :value="locale.code"
+                    size="small"
+                    :aria-label="locale.name"
+                >
+                    {{ locale.label }}
+                </v-btn>
+            </v-btn-toggle>
+        </div>
         <RouterView />
         <v-footer class="app-footer" padless>
             <div class="footer-content">
-                Sound Effect
+                {{ t('app.footerSoundEffect') }}
                  <!-- by
                 <a
                     href="https://pixabay.com/fr/users/fnx_sound-44436577/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=287651"
@@ -17,7 +45,7 @@
                 >
                     Yhomar Frhiss Cueva Oviedo
                 </a> -->
-                from
+                {{ t('app.footerFrom') }}
                 <a
                     href="https://pixabay.com/fr/sound-effects"
                     target="_blank"
@@ -34,6 +62,26 @@
     header {
         line-height: 1.5;
         max-height: 100vh;
+    }
+
+    .language-switcher {
+        position: fixed;
+        top: 12px;
+        right: 14px;
+        z-index: 1200;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 6px 18px rgba(10, 29, 39, 0.14);
+    }
+
+    .language-switcher__label {
+        color: #173847;
+        font-size: 0.78rem;
+        font-weight: 600;
     }
 
     .app-footer {

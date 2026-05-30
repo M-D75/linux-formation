@@ -13,13 +13,13 @@
                     v-if="sessionParticipantName"
                     class="session-banner__text"
                 >
-                    Participant: {{ sessionParticipantName }}
+                    {{ t('navigation.bannerParticipant', { name: sessionParticipantName }) }}
                 </span>
                 <span
                     v-else-if="sessionMode === 'admin' && sessionCode"
                     class="session-banner__text"
                 >
-                    Admin connecte a {{ sessionCode }}
+                    {{ t('navigation.bannerAdminConnected', { code: sessionCode }) }}
                 </span>
             </div>
 
@@ -27,10 +27,10 @@
                 <v-btn
                     class="session-banner__button"
                     size="small"
-                    variant="flat"
-                    :to="{ name: 'session-access' }"
-                >
-                    Session
+                variant="flat"
+                :to="{ name: 'session-access' }"
+            >
+                    {{ t('common.session') }}
                 </v-btn>
                 <v-btn
                     v-if="hasActiveSessionContext"
@@ -39,7 +39,7 @@
                     variant="flat"
                     @click="leaveSessionMode"
                 >
-                    Quitter
+                    {{ t('navigation.leave') }}
                 </v-btn>
             </div>
         </div>
@@ -51,7 +51,7 @@
         >
             <img
                 :src="robotImage"
-                alt="Assistant robot"
+                :alt="t('navigation.robotAlt')"
                 :class="['robot-sprite', { 'robot-jump': robotJumping, 'robot-flicker': robotFlicker }]"
             />
             <div
@@ -81,38 +81,29 @@
             <v-card>
                 <v-card-title class="text-h6 mission-title">
                     <v-icon color="cyan-lighten-1" class="mr-2">mdi-rocket-launch</v-icon>
-                    Briefing de mission
+                    {{ t('navigation.missionTitle') }}
                 </v-card-title>
                 <v-card-text class="mission-intro">
-                    <p class="text-body-2">
-                        👋 Padawan du Shell, te voilà enfin !<br>
-                        L’ordinateur d'entraînement a dormi 17 cycles... mais ta venue l’a réveillé.<br><br>
-
-                        J’ai besoin d’un pilote. D’un vrai.<br>
-                        D’un humain qui sait taper plus vite que son ombre.
-                    </p>
+                    <p class="text-body-2" v-html="t('navigation.missionIntro1')"></p>
                     <br>
                     <p class="text-body-2">
-                        🎯 <span class="font-weight-bold text-subtitle-1">Objectif</span> :
+                        🎯 <span class="font-weight-bold text-subtitle-1">{{ t('navigation.missionObjectiveLabel') }}</span> :
                         <br>
-                        Explorer un vieux système Linux abandonné
-                        et réactiver 5 modules sacrés :
-                          <br> - <span class="font-weight-medium">Observation</span> : Te situer dans l'arborescence <v-chip label size="x-small" color="blue" style="margin: 0;"><code>pwd</code></v-chip>
-                          <br> - <span class="font-weight-medium">Exploration | Déplacement</span> : Explorer les environs <v-chip label size="x-small" color="blue" style="margin: 0;"><code>ls|cd</code></v-chip>
-                          <br> - <span class="font-weight-medium">Nettoyage</span> : Nettoyer l'antique dossier <strong>archives</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>rm</code></v-chip>
-                          <br> - <span class="font-weight-medium">Restauration</span> : Monter l'opération <strong>mission/briefing.txt</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>touch</code></v-chip>
+                        {{ t('navigation.missionObjectiveIntro') }}
+                          <br> - <span class="font-weight-medium">{{ t('navigation.missionObservation') }}</span> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>pwd</code></v-chip>
+                          <br> - <span class="font-weight-medium">{{ t('navigation.missionExploration') }}</span> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>ls|cd</code></v-chip>
+                          <br> - <span class="font-weight-medium">{{ t('navigation.missionCleanup') }}</span> <strong>archives</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>rm</code></v-chip>
+                          <br> - <span class="font-weight-medium">{{ t('navigation.missionRestoration') }}</span> <strong>mission/briefing.txt</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>touch</code></v-chip>
                     </p>
                     <br>
-                    <p class="text-body-2">
-                        🤔 Tu veux un copilote baptisé <span class="font-weight-bold">"Tutoriel"</span> ou tu fonces en solo ?
-                    </p>
+                    <p class="text-body-2" v-html="t('navigation.missionQuestion')"></p>
                 </v-card-text>
                 <v-card-actions class="justify-end">
                     <v-btn variant="text" color="secondary" @click="skipTutorial">
-                        Passer
+                        {{ t('navigation.skip') }}
                     </v-btn>
                     <v-btn color="primary" @click="beginTutorial">
-                        Lancer le tutoriel
+                        {{ t('navigation.startTutorial') }}
                     </v-btn>
                 </v-card-actions>
             </v-card>
@@ -126,7 +117,7 @@
             <v-card>
                 <v-card-title class="text-h6">
                     <v-icon class="mr-2" color="deep-purple-accent-2">mdi-pencil</v-icon>
-                    {{ nanoEditor.filePath ? `Édition - ${nanoEditor.filePath}` : 'Éditeur de fichier' }}
+                    {{ nanoEditor.filePath ? t('navigation.editorTitle', { path: nanoEditor.filePath }) : t('navigation.editorFallbackTitle') }}
                 </v-card-title>
                 <v-card-text>
 
@@ -135,7 +126,7 @@
                         rows="12"
                         auto-grow
                         variant="outlined"
-                        label="Contenu du fichier"
+                        :label="t('navigation.editorContentLabel')"
                     ></v-textarea>
 
                     <v-alert
@@ -149,29 +140,75 @@
                 </v-card-text>
                 <v-card-actions class="justify-end">
                     <v-btn variant="text" color="secondary" @click="closeNanoEditor">
-                        Annuler
+                        {{ t('common.cancel') }}
                     </v-btn>
                     <v-btn color="primary" @click="saveNanoEditor">
-                        Enregistrer
+                        {{ t('common.save') }}
                     </v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>
 
-        <div class="badges-actions">
-            <v-btn
-                class="badge-toggle-btn"
-                variant="tonal"
-                color="secondary"
-                size="small"
-                @click="showBadgePanel = !showBadgePanel"
-            >
-                {{ showBadgePanel ? 'Masquer' : 'Afficher' }} les badges ({{ earnedBadgesCount }}/{{ badges.length }})
-            </v-btn>
+        <div class="learning-toolbar">
+            <div class="learning-mode-control">
+                <span class="learning-mode-label">{{ t('navigation.learningModeLabel') }}</span>
+                <v-btn-toggle
+                    v-model="learningMode"
+                    mandatory
+                    density="compact"
+                    variant="outlined"
+                    color="primary"
+                    divided
+                    :aria-label="t('navigation.learningModeLabel')"
+                >
+                    <v-tooltip
+                        v-for="mode in learningModeOptions"
+                        :key="mode.value"
+                        :text="mode.description"
+                        location="bottom"
+                    >
+                        <template #activator="{ props }">
+                            <v-btn
+                                v-bind="props"
+                                :value="mode.value"
+                                size="small"
+                            >
+                                <v-icon size="16" class="mr-1">{{ mode.icon }}</v-icon>
+                                {{ mode.label }}
+                            </v-btn>
+                        </template>
+                    </v-tooltip>
+                </v-btn-toggle>
+            </div>
+
+            <div class="learning-toolbar__actions">
+                <v-btn
+                    class="badge-toggle-btn"
+                    variant="tonal"
+                    color="secondary"
+                    size="small"
+                    @click="showBadgePanel = !showBadgePanel"
+                >
+                    {{ t('navigation.badgesToggle', { action: showBadgePanel ? t('common.hide') : t('common.show'), earned: earnedBadgesCount, total: badges.length }) }}
+                </v-btn>
+                <v-tooltip :text="t('navigation.resetTooltip')" location="bottom">
+                    <template #activator="{ props }">
+                        <v-btn
+                            v-bind="props"
+                            icon="mdi-restart"
+                            variant="tonal"
+                            color="error"
+                            size="small"
+                            :aria-label="t('navigation.resetTraining')"
+                            @click="confirmResetTraining"
+                        ></v-btn>
+                    </template>
+                </v-tooltip>
+            </div>
         </div>
         <!-- Main container for command input and tree visualization -->
         <v-slide-y-transition>
-            <div class="command-suggestions global">
+            <div v-if="showCommandAssist" class="command-suggestions global">
                 <template v-if="commandSuggestions.length">
                     <template
                         v-for="cmd in commandSuggestions"
@@ -198,7 +235,7 @@
                 <template v-else>
                     <v-tooltip
                         v-if="!hasNoCommandMatch"
-                        text="Besoin d'aide ? Clique pour lancer help dans le terminal." 
+                        :text="t('navigation.helpTooltip')"
                         location="bottom"
                     >
                         <template #activator="{ props }">
@@ -216,7 +253,7 @@
 
                     <v-tooltip
                         v-if="hasNoCommandMatch"
-                        text="Analyse: aucune commande connue ne correspond à ces caractères."
+                        :text="t('navigation.noCommandMatchTooltip')"
                         location="bottom"
                     >
                         <template #activator="{ props }">
@@ -228,7 +265,7 @@
                                 prepend-icon="mdi-alert-octagon"
                                 @click="injectHelpCommand"
                             >
-                                Attention !
+                                {{ t('common.warning') }}
                             </v-chip>
                         </template>
                     </v-tooltip>
@@ -261,21 +298,25 @@
                         base-color="white"
                         bg-color="#333"
                         variant="solo"
-                        label="Entrez une commande (help, cd, ls, mkdir, touch, chmod...)"
+                        :label="t('navigation.commandLabel')"
                         @focus="dismissCommandHint"
                         @keyup.enter="executeCommand()"
                         @keyup="handleInputKeyup($event)"
                         @keydown.tab.prevent="autoCompleteCommand"
-                        placeholder="Par exemple : cd documents"
+                        :placeholder="t('navigation.commandPlaceholder')"
                     ></v-text-field>
                     <transition name="badge-unlock">
                         <div
-                            v-if="showCommandHint"
+                            v-if="showCommandHint && showCommandAssist"
                             class="command-input-hint"
+                            role="button"
+                            tabindex="0"
                             @click="focusCommandInput"
+                            @keydown.enter.prevent="focusCommandInput"
+                            @keydown.space.prevent="focusCommandInput"
                         >
                             <v-icon class="mr-1" size="18">mdi-lightning-bolt</v-icon>
-                            Entrez votre première commande en cliquant ici
+                            {{ t('navigation.firstCommandHint') }}
                             <span class="hint-arrow">↵</span>
                         </div>
                     </transition>
@@ -293,7 +334,7 @@
                         </v-card-title>
 
                         <v-card-text>
-                            <div class="tutorial-description" v-html="currentTutorialStep ? currentTutorialStep.description : ''"></div>
+                            <div class="tutorial-description" v-html="currentTutorialStep ? formatLearningText(currentTutorialStep.description) : ''"></div>
                             <div
                                 v-if="tutorial.feedback"
                                 class="tutorial-feedback"
@@ -306,16 +347,16 @@
                                 >
                                     {{ tutorial.feedbackType === 'success' ? 'mdi-check-circle' : 'mdi-lightbulb-on' }}
                                 </v-icon>
-                                <span>{{ tutorial.feedback }}</span>
+                                <span v-html="highlightCommandNames(tutorial.feedback)"></span>
                             </div>
                         </v-card-text>
 
                         <v-card-actions class="justify-space-between info-step-tutorial">
                             <v-btn variant="text" size="small" @click="skipTutorial">
-                                Passer le tutoriel
+                                {{ t('navigation.skipTutorial') }}
                             </v-btn>
                             <div class="text-caption">
-                                Étape {{ tutorial.currentStep + 1 }} / {{ tutorial.steps.length }}
+                                {{ t('navigation.stepCounter', { current: tutorial.currentStep + 1, total: tutorial.steps.length }) }}
                             </div>
                         </v-card-actions>
                     </v-card>
@@ -330,7 +371,7 @@
                     color="primary"
                     variant="tonal"
                 >
-                    <v-icon>mdi-check</v-icon><span>Mission accomplie ! Tu peux continuer à t'entraîner librement.</span>
+                    <v-icon>mdi-check</v-icon><span>{{ t('navigation.missionDone') }}</span>
                 </v-snackbar>
 
                 <v-navigation-drawer
@@ -345,7 +386,7 @@
                         color="transparent"
                         density="compact"
                     >
-                        <v-toolbar-title>Badges</v-toolbar-title>
+                        <v-toolbar-title>{{ t('navigation.badges') }}</v-toolbar-title>
                         <v-spacer></v-spacer>
                         <v-btn icon variant="text" @click="showBadgePanel = false">
                             <v-icon>mdi-close</v-icon>
@@ -405,7 +446,7 @@
                             </div>
                             <div class="badge-unlock-text">
                                 <div class="badge-unlock-label">
-                                    Succès débloqué
+                                    {{ t('navigation.achievementUnlocked') }}
                                 </div>
                                 <div class="badge-unlock-name">
                                     {{ badgeSnackbar.message }}
@@ -421,7 +462,7 @@
                                 class="badge-view-btn"
                                 @click="openBadgePanel"
                             >
-                                Voir
+                                {{ t('common.view') }}
                             </v-btn>
                         </div>
                     </div>
@@ -432,6 +473,9 @@
                     class="output-cmd"
                     :class="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 'output-cmd-tutorial' : ''"
                     ref="outputCmd"
+                    role="log"
+                    aria-live="polite"
+                    :aria-label="t('navigation.terminalOutputLabel')"
                     base-color="white"
                     bg-color="#333"
                     :height="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 250 : ''"
@@ -465,7 +509,28 @@
             </div>
 
             <!-- Tree visualization section -->
-            <div id="tree" ref="tree"></div>
+            <div class="tree-panel">
+                <div class="tree-legend" :aria-label="t('navigation.treeLegendTitle')">
+                    <div class="tree-legend__title">{{ t('navigation.treeLegendTitle') }}</div>
+                    <div class="tree-legend__item">
+                        <span class="tree-legend__marker tree-legend__marker--folder"></span>
+                        {{ t('navigation.treeLegendFolder') }}
+                    </div>
+                    <div class="tree-legend__item">
+                        <span class="tree-legend__marker tree-legend__marker--file"></span>
+                        {{ t('navigation.treeLegendFile') }}
+                    </div>
+                    <div class="tree-legend__item">
+                        <span class="tree-legend__marker tree-legend__marker--current"></span>
+                        {{ t('navigation.treeLegendCurrent') }}
+                    </div>
+                    <div class="tree-legend__item">
+                        <span class="tree-legend__line"></span>
+                        {{ t('navigation.treeLegendPath') }}
+                    </div>
+                </div>
+                <div id="tree" ref="tree" :aria-label="t('navigation.treeAriaLabel')"></div>
+            </div>
         </div>
 
         <!-- Breadcrumbs for current directory path -->
@@ -526,7 +591,7 @@
                 <v-tooltip 
                     v-else
                     max-width="250"
-                    text="Entrez la comande 'pwd' afin de savoir si vous n'êtes pas perdue."
+                    :text="t('navigation.pwdTooltip')"
                 >
                     <template v-slot:activator="{ props }">
                         <v-btn 
@@ -549,10 +614,10 @@
             <!-- chmod command information -->
             <div v-if="chmodInfos.data.user.length > 0">
                 <h3 style="text-align: center; font-weight: 200;">
-                    commande : <span style="font-weight: bold;">chmod</span>
+                    {{ t('navigation.chmodCommand') }} <span style="font-weight: bold;">chmod</span>
                     <v-tooltip 
                         max-width="250"
-                        text="permet de configurer l'accès aux fichiers et aux répertoires"
+                        :text="t('navigation.chmodTooltip')"
                     >
                         <template v-slot:activator="{ props }">
                             <v-btn 
@@ -571,7 +636,7 @@
                     </v-tooltip>
                 </h3>
 
-                <h2 style="text-align: center; font-weight: 200;">concernant le {{ chmodInfos.rights.charAt(0) == '-' ? 'fichier' : 'dossier' }} : <span style="font-weight: bold;">{{ chmodInfos.fileName }}</span></h2>
+                <h2 style="text-align: center; font-weight: 200;">{{ t('navigation.chmodTarget', { type: chmodInfos.rights.charAt(0) == '-' ? t('navigation.file') : t('navigation.folder') }) }} <span style="font-weight: bold;">{{ chmodInfos.fileName }}</span></h2>
                 
                 <div
                     class="cont-chmod-card"
@@ -718,7 +783,7 @@
                             prepend-icon="mdi-information-slab-circle-outline"
                             class="bounce"
                         >
-                            Historique des commandes
+                            {{ t('navigation.commandHistory') }}
                         </v-chip>
                     </div>
 
@@ -753,7 +818,40 @@
   import * as d3 from 'd3';
   import $ from 'jquery';
   import { folderTree } from '../data/folderTree';
+  import { currentLocale, t, tm } from '../i18n';
   import { sessionClient } from '../services/sessionClient';
+
+  const LEARNING_MODE_STORAGE_KEY = 'linuxFormationLearningMode';
+  const DEFAULT_LEARNING_MODE = 'guided';
+  const LEARNING_MODES = ['guided', 'practice', 'evaluation'];
+
+  const buildInitialTreeData = () => {
+    const localTree = JSON.parse(JSON.stringify(folderTree));
+
+    const ensureFileContent = (node) => {
+      if (!node || typeof node !== 'object') {
+        return;
+      }
+      if (node.type === 'f' && typeof node.content !== 'string') {
+        node.content = '';
+      }
+      if (Array.isArray(node.children)) {
+        node.children.forEach(ensureFileContent);
+      }
+    };
+
+    ensureFileContent(localTree);
+    return localTree;
+  };
+
+  const loadLearningMode = () => {
+    if (typeof window === 'undefined') {
+      return DEFAULT_LEARNING_MODE;
+    }
+
+    const stored = window.localStorage.getItem(LEARNING_MODE_STORAGE_KEY);
+    return LEARNING_MODES.includes(stored) ? stored : DEFAULT_LEARNING_MODE;
+  };
   
   export default {
     name: 'FolderTree',
@@ -779,7 +877,26 @@
                 this.$store.commit('setRobotSoundEnabled', !!enabled);
             },
         },
+        learningModeOptions() {
+            return tm('navigation.learningModes') || [];
+        },
+        currentLearningModeLabel() {
+            const mode = this.learningModeOptions.find((entry) => entry.value === this.learningMode);
+            return mode?.label || this.learningMode;
+        },
+        showCommandAssist() {
+            return this.learningMode === 'guided';
+        },
+        showDetailedTutorialFeedback() {
+            return this.learningMode !== 'evaluation';
+        },
+        showRobotEducationalHints() {
+            return this.learningMode === 'guided';
+        },
         commandSuggestions() {
+            if (!this.showCommandAssist) {
+                return [];
+            }
             const term = (this.command || '').trim().split(' ')[0]?.toLowerCase() || '';
             if (!term) {
                 return [];
@@ -793,6 +910,9 @@
                 .filter((cmd) => typeof cmd === 'string' && cmd.length > 0);
         },
         hasNoCommandMatch() {
+            if (!this.showCommandAssist) {
+                return false;
+            }
             const raw = (this.command || '').trim().toLowerCase();
             const term = raw.split(' ')[0] || '';
             if (!term) {
@@ -814,12 +934,15 @@
         },
         sessionModeLabel() {
             if (this.sessionMode === 'participant') {
-                return this.sessionCode ? `Session ${this.sessionCode}` : 'Mode session';
+                return this.sessionCode ? this.t('navigation.sessionWithCode', { code: this.sessionCode }) : this.t('navigation.modeSession');
             }
             if (this.sessionMode === 'admin') {
-                return this.sessionCode ? `Admin ${this.sessionCode}` : 'Mode admin';
+                return this.sessionCode ? this.t('navigation.adminWithCode', { code: this.sessionCode }) : this.t('navigation.modeAdmin');
             }
-            return 'Mode hors session';
+            return this.t('navigation.modeOffline');
+        },
+        currentLocale() {
+            return currentLocale.value;
         },
         isParticipantSession() {
             return this.sessionMode === 'participant'
@@ -834,6 +957,9 @@
         command(val) {
             if (val && this.showCommandHint) {
                 this.showCommandHint = false;
+            }
+            if (val) {
+                this.clearRobotTooltipOnUserAction();
             }
         },
         showCommandHint(val) {
@@ -854,21 +980,26 @@
                 this.stopParticipantTelemetry();
             }
         },
-    },
-    data() {
-        const localTree = JSON.parse(JSON.stringify(folderTree));
-        const ensureFileContent = (node) => {
-            if (!node || typeof node !== 'object') {
+        currentLocale() {
+            this.refreshLocalizedContent();
+        },
+        learningMode(mode) {
+            if (!LEARNING_MODES.includes(mode)) {
+                this.learningMode = DEFAULT_LEARNING_MODE;
                 return;
             }
-            if (node.type === 'f' && typeof node.content !== 'string') {
-                node.content = '';
+            if (typeof window !== 'undefined') {
+                window.localStorage.setItem(LEARNING_MODE_STORAGE_KEY, mode);
             }
-            if (Array.isArray(node.children)) {
-                node.children.forEach(ensureFileContent);
+            if (mode !== 'guided') {
+                this.showCommandHint = false;
+                this.clearTutorialRobotHint();
             }
-        };
-        ensureFileContent(localTree);
+            this.clearRobotTooltipOnUserAction();
+        },
+    },
+    data() {
+        const localTree = buildInitialTreeData();
 
         return {
             root: null,
@@ -899,6 +1030,7 @@
             },
             currentUser: 'user',
             currentGroups: ['user'],
+            learningMode: loadLearningMode(),
             tutorial: {
                 showIntro: true,
                 active: true,
@@ -907,111 +1039,15 @@
                 currentStep: 0,
                 feedback: '',
                 feedbackType: '',
-                steps: [
-                    {
-                        id: 'help',
-                        title: '1. Découvre ton arsenal',
-                        description: 'Tape <code>help</code> pour afficher toutes les commandes disponibles dans ce poste d’entraînement.',
-                        success: 'Tu sais maintenant comment obtenir la liste des commandes.'
-                    },
-                    {
-                        id: 'pwd',
-                        title: '2. Repérer ta position',
-                        description: 'Tape <code>pwd</code> pour afficher le chemin comme <strong>root &gt; home &gt; user</strong>.',
-                        success: 'Tu sais maintenant où tu te trouves.'
-                    },
-                    {
-                        id: 'ls',
-                        title: '3. Observer les environs',
-                        description: 'Exécute <code>ls</code> (optionnellement avec <code>-l</code>) pour voir les dossiers disponibles.',
-                        success: 'Cartographie du secteur réalisée.'
-                    },
-                    {
-                        id: 'cd-documents',
-                        title: '4. Atteindre le dossier documents',
-                        description: 'Utilise <code>cd documents</code> (ou le chemin absolu) pour rejoindre le dossier <strong>documents</strong>.',
-                        success: 'Bienvenue dans les documents.'
-                    },
-                    {
-                        id: 'cd-parent',
-                        title: '5. Remonter d’un niveau',
-                        description: 'Utilise <code>cd ..</code> ou <code>cd ../</code> pour revenir au dossier parent et apprendre à reculer d’un cran.',
-                        success: 'La marche arrière est maîtrisée.'
-                    },
-                    {
-                        id: 'cd-documents-return',
-                        title: '6. Retourner dans documents',
-                        description: 'Reviens maintenant dans <strong>documents</strong> avec <code>cd documents</code> pour poursuivre la mission.',
-                        success: 'De retour dans documents, prêt pour la suite.'
-                    },
-                    {
-                        id: 'ls-documents',
-                        title: '7. Vérifier le contenu de documents',
-                        description: 'Affiche ce que contient <strong>documents</strong> avec <code>ls</code> avant de supprimer quoi que ce soit.',
-                        success: 'Tu as vérifié le contenu de documents.'
-                    },
-                    {
-                        id: 'rm-archives',
-                        title: '8. Nettoyer les archives',
-                        description: 'Supprime l’ancien dossier <code>archives</code> avec <code>rm -r archives</code>.',
-                        success: 'Archives nettoyées avec succès.'
-                    },
-                    {
-                        id: 'mkdir-mission',
-                        title: '9. Préparer la mission',
-                        description: 'Crée un nouveau dossier <code>mission</code> (ex: <code>mkdir mission</code>) dans <strong>documents</strong>.',
-                        success: 'Dossier mission créé.'
-                    },
-                    {
-                        id: 'ls-mission-check',
-                        title: '10. Confirmer la création',
-                        description: 'Exécute <code>ls</code> dans <strong>documents</strong> pour vérifier que le dossier <code>mission</code> est présent.',
-                        success: 'Mission est bien visible dans documents.'
-                    },
-                    {
-                        id: 'cd-mission',
-                        title: '11. Entrer dans mission',
-                        description: 'Déplace-toi dans le dossier <code>mission</code>.',
-                        success: 'Mission est maintenant ton dossier courant.'
-                    },
-                    {
-                        id: 'touch-briefing',
-                        title: '12. Créer le briefing',
-                        description: 'Crée un fichier <code>briefing.txt</code> (ex: <code>touch briefing.txt</code>) dans <strong>mission</strong>.',
-                        success: 'Briefing.txt est en place, mission accomplie !'
-                    },
-                ],
+                steps: tm('navigationData.tutorialSteps') || [],
             },
             showCommandHint: true,
             signals: [],
             signalCounter: 0,
             signalTimers: [],
-            commandDescriptions: {
-                '': 'Information système',
-                help: 'Affiche la liste des commandes disponibles.',
-                man: 'Consulte la documentation détaillée d\'une commande.',
-                pwd: 'Affiche le chemin du répertoire courant.',
-                echo: 'Renvoie du texte dans le terminal.',
-                cd: 'Change de répertoire.',
-                ls: 'Liste le contenu d\'un dossier.',
-                ll: 'Alias de ls -l : liste détaillée des fichiers.',
-                mkdir: 'Crée un nouveau dossier.',
-                touch: 'Crée ou met à jour un fichier.',
-                rm: 'Supprime un fichier ou un dossier.',
-                chmod: 'Modifie les permissions d\'un fichier ou dossier.',
-                cat: 'Affiche le contenu d\'un fichier (supporte la redirection).',
-                head: 'Affiche les premières lignes d\'un fichier (option -n).',
-                tail: 'Affiche les dernières lignes d\'un fichier (option -n).',
-                nano: 'Ouvre un éditeur pop-up pour modifier un fichier.',
-            },
+            commandDescriptions: tm('navigationData.commandDescriptions') || {},
             showBadgePanel: false,
-            badges: [
-                { id: 'explorer', title: 'Explorateur', description: 'Visite 10 répertoires différents.', earned: false, icon: 'mdi-compass' },
-                { id: 'architecte', title: 'Architecte', description: 'Crée un dossier et un fichier.', earned: false, icon: 'mdi-home-analytics' },
-                { id: 'nettoyeur', title: 'Nettoyeur', description: 'Supprime un dossier avec rm -r.', earned: false, icon: 'mdi-delete-sweep' },
-                { id: 'sage', title: 'Sage du shell', description: 'Consulte 3 pages man.', earned: false, icon: 'mdi-book-open-variant' },
-                { id: 'mentor', title: 'Mentor', description: 'Termine le tutoriel d’entraînement.', earned: false, icon: 'mdi-school-outline' },
-            ],
+            badges: (tm('navigationData.badges') || []).map((badge) => ({ ...badge, earned: false })),
             stats: {
                 visitedPaths: [],
                 createdDirectory: false,
@@ -1072,45 +1108,12 @@
                 greetingShown: false,
                 lastMessage: '',
                 auto: false,
+                persistentUntilAction: false,
                 timer: null,
                 type: 'default',
                 icon: '',
             },
-            robotDialoguePool: [
-                'Je t\'observe, courage.',
-                'Continue à apprendre, tu te débrouilles bien.',
-                'Chaque commande compte, même les petites.',
-                'Les archives n\'ont qu\'à bien se tenir.',
-                'Un terminal heureux est un terminal utilisé.',
-                'La précision est ta meilleure alliée.',
-                'Tu vas devenir un maître du shell.',
-                'Une étape à la fois, ça avance.',
-                'J\'adore quand tu utilises pwd 📍.',
-                'Les dossiers tremblent devant toi.',
-                'On respire, on tape, on réussit.',
-                'Tu as déjà parcouru un long chemin.',
-                'Je garde un œil bienveillant sur toi 👀.',
-                'Les erreurs sont juste des indices déguisés.',
-                'Quel style dans tes commandes !',
-                'La mission avance, ne lâche rien.',
-                'Tu fais ça comme un(e) pro.',
-                'Ton futur toi te dira merci.',
-                'Les neurones chauffent, j\'aime ça 🔥.',
-                'Linux n\'a qu\'à bien se tenir.',
-                'Laisse ta curiosité te guider.',
-                'Une pause café ? Non, une commande !',
-                'Chaque cd te rapproche de la victoire.',
-                'Tu fais danser les répertoires 💃.',
-                'Garde le cap, le terminal est avec toi.',
-                'La patience est ta superpuissance.',
-                'Même les octets te regardent avec respect.',
-                'Tu tapes vite, mais tu apprends encore plus vite ⚡.',
-                'Ton clavier est ton sabre laser.',
-                'Un shell bien dompté, c\'est la liberté.',
-                'On dirait que tu connais déjà la voie.',
-                'Les permissions t\'obéissent 👑.',
-                'Chaque réussite mérite un petit sourire.'
-            ],
+            robotDialoguePool: tm('navigationData.robotDialogues') || [],
             robotCommandKeywords: [
                 'help', 'pwd', 'ls', 'cd', 'mkdir', 'touch',
                 'rm', 'chmod', 'cat', 'head', 'tail', 'nano', 'echo'
@@ -1127,18 +1130,7 @@
                 'mdi-school-outline',
                 'mdi-hand-okay'
             ],
-            robotErrorEncouragements: [
-                'Courage, tu vas y arriver !',
-                'Respire et réessaie calmement.',
-                'Les erreurs font aussi partie de l\'apprentissage.',
-                'Chaque tentative te rapproche de la solution.',
-                'On corrige et on continue.',
-                'Un petit ajustement et ça passera.',
-                'Ne lâche rien, tu es sur la bonne voie.',
-                'Tu peux le faire, j\'en suis sûr.',
-                'Analyse, corrige, et fonce.',
-                'Même les maîtres du shell se trompent parfois.'
-            ],
+            robotErrorEncouragements: tm('navigationData.robotErrorEncouragements') || [],
             treeSvg: null,
             robotSoundToast: {
                 visible: false,
@@ -1159,6 +1151,9 @@
         };
     },
     mounted() {
+        if (!this.showCommandAssist) {
+            this.showCommandHint = false;
+        }
         this.createTree();
         this.createOutputAnimate()
         this.loadCommandHistory();
@@ -1201,6 +1196,101 @@
         }
     },
     methods: {
+        t(key, params = {}) {
+            return t(key, params);
+        },
+        buildTutorialSuccessFeedback(step) {
+            const success = step?.success || this.t('terminal.tutorialStepValidated');
+            if (!this.showDetailedTutorialFeedback || !step?.concept) {
+                return success;
+            }
+            return `${success}\n${this.t('terminal.conceptPrefix')} ${step.concept}`;
+        },
+        formatLearningText(message = '') {
+            return (message || '').replace(/`([^`]+)`/g, '<code>$1</code>');
+        },
+        refreshLocalizedContent() {
+            const earnedMap = {};
+            this.badges.forEach((badge) => {
+                earnedMap[badge.id] = badge.earned;
+            });
+
+            this.tutorial.steps = tm('navigationData.tutorialSteps') || [];
+            this.commandDescriptions = tm('navigationData.commandDescriptions') || {};
+            this.badges = (tm('navigationData.badges') || []).map((badge) => ({
+                ...badge,
+                earned: !!earnedMap[badge.id],
+            }));
+            this.robotDialoguePool = tm('navigationData.robotDialogues') || [];
+            this.robotErrorEncouragements = tm('navigationData.robotErrorEncouragements') || [];
+            this.tutorial.feedback = '';
+            this.robotTooltip.visible = false;
+            this.robotTooltip.auto = false;
+            this.robotTooltip.persistentUntilAction = false;
+            this.robotTooltip.lastMessage = '';
+            this.robotTooltip.greetingShown = false;
+        },
+        confirmResetTraining() {
+            this.clearRobotTooltipOnUserAction();
+            const confirmed = typeof window === 'undefined'
+                ? true
+                : window.confirm(this.t('terminal.confirmResetTraining'));
+            if (!confirmed) {
+                return;
+            }
+            this.resetTrainingState();
+        },
+        resetTrainingState() {
+            this.signalTimers.forEach((timer) => clearTimeout(timer));
+            this.signalTimers = [];
+            this.signals = [];
+            this.folderTreeData = buildInitialTreeData();
+            this.root = null;
+            this.currentNode = null;
+            this.pwd = '';
+            this.command = '';
+            this.output = this.t('terminal.trainingResetDone');
+            this.commandHistory = [];
+            this.cursorHistory = 0;
+            this.cDirect = { from: null, to: null };
+            this.chmodInfos = {
+                fileName: '',
+                rights: '----------',
+                data: {
+                    user: [],
+                    group: [],
+                    other: [],
+                },
+            };
+            this.tutorial.showIntro = true;
+            this.tutorial.active = true;
+            this.tutorial.completed = false;
+            this.tutorial.showSuccess = false;
+            this.tutorial.currentStep = 0;
+            this.tutorial.feedback = '';
+            this.tutorial.feedbackType = '';
+            this.showCommandHint = this.showCommandAssist;
+            this.tutorialGuidance.introShown = false;
+            this.tutorialGuidance.helpHintShown = false;
+            this.tutorialGuidance.persistentId = null;
+            this.telemetryQueue = [];
+            this.stats = {
+                visitedPaths: [],
+                createdDirectory: false,
+                createdFile: false,
+                removedDirectory: false,
+                manUses: 0,
+                tutorialCompleted: false,
+            };
+            this.badges = this.badges.map((badge) => ({ ...badge, earned: false }));
+            this.$store.commit('setCommandHistory', { history: [], timestamp: null });
+            this.persistBadges();
+            this.$nextTick(() => {
+                this.createTree();
+                this.createOutputAnimate();
+                this.focusCommandInput();
+            });
+        },
         buildRightsInfos(){
             // 
             const usersR = this.chmodInfos.rights.split("").slice(1, 4);
@@ -1214,7 +1304,7 @@
             // mdi-robot-off
 
             this.chmodInfos.data.user = [{
-                            title: "[user] Vous pouvez ", 
+                            title: this.t('terminal.chmodUserCan'), 
                             value: 0, 
                             props: {
                                     prependIcon: 'mdi-account',
@@ -1244,7 +1334,7 @@
                     }
                 },
                 "r": {
-                    title: "[r] le lire", 
+                    title: this.t('terminal.chmodReadUser'), 
                     value: 1, 
                     props: {
                         appendIcon: 'mdi-book-open-outline',
@@ -1252,7 +1342,7 @@
                     }
                 },
                 "w": {
-                    title: "[w] l'écrire", 
+                    title: this.t('terminal.chmodWriteUser'), 
                     value: 2, 
                     props: {
                         appendIcon: 'mdi-pen-plus',
@@ -1260,7 +1350,7 @@
                     }
                 },
                 "x": {
-                    title: "[x] l'éxecuter", 
+                    title: this.t('terminal.chmodExecuteUser'), 
                     value: 3, 
                     props: {
                         appendIcon: 'mdi-robot-excited',
@@ -1305,7 +1395,7 @@
                     }
                 },
                 "r": {
-                    title: "[r] lirent", 
+                    title: this.t('terminal.chmodReadGroup'), 
                     value: 1, 
                     props: {
                         appendIcon: 'mdi-book-open-outline',
@@ -1313,7 +1403,7 @@
                     }
                 },
                 "w": {
-                    title: "[w] écrirent", 
+                    title: this.t('terminal.chmodWriteGroup'), 
                     value: 2, 
                     props: {
                         appendIcon: 'mdi-pen-plus',
@@ -1321,7 +1411,7 @@
                     }
                 },
                 "x": {
-                    title: "[x] éxecuter", 
+                    title: this.t('terminal.chmodExecuteGroup'), 
                     value: 3, 
                     props: {
                         appendIcon: 'mdi-robot-excited',
@@ -1334,7 +1424,7 @@
             const groupR = this.chmodInfos.rights.split("").slice(4, 7);
 
             this.chmodInfos.data.group = [{
-                                    title: "[group] les membres du groupe peuvent", 
+                                    title: this.t('terminal.chmodGroupCan'), 
                                     value: 0, 
                                     props: {
                                         prependIcon: 'mdi-account-group',
@@ -1355,7 +1445,7 @@
             // others
             const otherR = this.chmodInfos.rights.split("").slice(7, 10);
             this.chmodInfos.data.other = [{
-                            title: "[other] Tous les autres peuvent", 
+                            title: this.t('terminal.chmodOtherCan'), 
                             value: 0, 
                             props: {
                                     prependIcon: 'mdi-earth',
@@ -1385,15 +1475,20 @@
             }
         },
         handleInputKeyup(event) {
+            if (event?.key !== 'Enter') {
+                this.clearRobotTooltipOnUserAction();
+            }
             this.dismissCommandHint();
             this.navigateTerminal(event);
         },
         selectCommandSuggestion(cmd) {
+            this.clearRobotTooltipOnUserAction();
             this.command = `${cmd} `;
             this.dismissCommandHint();
             this.$nextTick(() => this.focusCommandInput());
         },
         injectHelpCommand() {
+            this.clearRobotTooltipOnUserAction();
             this.command = 'help ';
             this.dismissCommandHint();
             this.$nextTick(() => this.focusCommandInput());
@@ -1472,7 +1567,7 @@
                         .attr('transform', (d) => `translate(${width/2},${0})`)
 
             g.append('text')
-                .text("COMMANDE [cd] : CHANGE DIRECTORY")
+                .text(this.t('navigation.chmodHeader'))
                 .attr('dy', '.35em')
                 .attr('dx', '1.7em')
                 // .attr('x', width/2)
@@ -1983,6 +2078,9 @@
             }
         },
         autoCompleteCommand() {
+            if (this.learningMode === 'evaluation') {
+                return;
+            }
             const args = this.command.trim().split(' ');
             const cmd = args[0];
 
@@ -1995,7 +2093,7 @@
                     this.command = matches[0] + ' ';
                 } 
                 else if (matches.length > 1) {
-                    this.output = `Suggestions: ${matches.join(', ')}`;
+                    this.output = this.t('terminal.suggestions', { items: matches.join(', ') });
 
                     const tooltip = this.buildCommandTooltip('', 'info', this.output);
                     this.commandHistory.push({ 
@@ -2055,7 +2153,7 @@
                 } 
                 else if (matches.length > 1) {
                     const suggestions = matches.map(match => match.data.name);
-                    this.output = `Suggestions: ${suggestions.join(', ')}`;
+                    this.output = this.t('terminal.suggestions', { items: suggestions.join(', ') });
                     
                     const tooltip = this.buildCommandTooltip('', 'info', this.output);
                     this.commandHistory.push({ 
@@ -2072,6 +2170,7 @@
             }
         },
         beginTutorial() {
+            this.clearRobotTooltipOnUserAction();
             this.tutorial.showIntro = false;
             this.tutorial.active = true;
             this.tutorial.completed = false;
@@ -2082,11 +2181,13 @@
             this.tutorialGuidance.introShown = false;
             this.tutorialGuidance.helpHintShown = false;
             this.tutorialGuidance.persistentId = null;
+            this.showCommandHint = this.showCommandAssist;
             if (this.showCommandHint) {
                 this.$nextTick(() => this.maybeShowTutorialIntroHint());
             }
         },
         skipTutorial() {
+            this.clearRobotTooltipOnUserAction();
             this.tutorial.showIntro = false;
             this.tutorial.active = false;
             this.tutorial.showSuccess = false;
@@ -2096,7 +2197,7 @@
         finishTutorial() {
             this.tutorial.completed = true;
             this.tutorial.active = false;
-            this.tutorial.feedback = 'Mission accomplie, continue librement !';
+            this.tutorial.feedback = this.t('terminal.tutorialFinished');
             this.tutorial.feedbackType = 'success';
             this.tutorial.showSuccess = false;
             this.stats.tutorialCompleted = true;
@@ -2106,7 +2207,7 @@
                 currentStep: this.tutorial.currentStep,
                 path: this.getSessionPath(),
             }, { immediate: true });
-            this.announceRobot('🚀 Mission accomplie ! Tu peux poursuivre librement 🚀', {
+            this.announceRobot(this.t('terminal.tutorialFinishedRobot'), {
                 duration: 4500,
                 mood: 'success',
             });
@@ -2181,11 +2282,13 @@
             }
 
             if (success) {
-                this.tutorial.feedback = step.success || 'Étape validée.';
+                this.tutorial.feedback = this.buildTutorialSuccessFeedback(step);
                 this.tutorial.feedbackType = 'success';
-                let robotMessage = step.success || '';
+                let robotMessage = this.showDetailedTutorialFeedback
+                    ? this.tutorial.feedback
+                    : (step.success || '');
                 const mnemonic = this.getMnemonicHint(step.id);
-                if (mnemonic) {
+                if (mnemonic && this.showRobotEducationalHints) {
                     const hintText = `💡 ${mnemonic}`;
                     robotMessage = robotMessage
                         ? `${robotMessage}\n${hintText}`
@@ -2193,10 +2296,10 @@
                 }
                 if (robotMessage) {
                     this.announceRobot(robotMessage, {
-                        duration: 5200,
                         mood: 'success',
                         type: 'success',
                         icon: 'mdi-check-circle',
+                        persistentUntilAction: this.showDetailedTutorialFeedback && !!step.concept,
                     });
                 }
                 this.queueTelemetryEvent('tutorial_step_completed', {
@@ -2228,18 +2331,20 @@
                     missionExists: !!missionNode,
                     briefingExists: !!briefingNode,
                 });
-                this.tutorial.feedback = errorMessage || 'Cette commande ne valide pas encore cette étape. Réessaie en suivant l\'indice ci-dessus.';
+                this.tutorial.feedback = this.showDetailedTutorialFeedback
+                    ? (errorMessage || this.t('terminal.tutorialCommandNoMatch'))
+                    : this.t('terminal.evaluationTryAgain');
                 this.tutorial.feedbackType = 'hint';
                 const soundType = commandState === 'valid' ? 'warning' : 'error';
                 this.playSoundEffect(soundType);
-                if (commandState === 'valid') {
+                if (commandState === 'valid' && this.showRobotEducationalHints) {
                     this.robotMoodOverride = 'warning';
-                    const warningText = errorMessage || 'Cette commande ne valide pas encore cette étape.';
+                    const warningText = errorMessage || this.t('terminal.tutorialCommandNoMatchShort');
                     this.announceRobot(warningText, {
-                        duration: 4600,
                         mood: 'warning',
                         type: 'warning',
                         icon: 'mdi-alert-circle-outline',
+                        persistentUntilAction: this.showDetailedTutorialFeedback,
                     });
                 }
             }
@@ -2263,125 +2368,125 @@
             switch (step.id) {
                 case 'help':
                     if (normalizedCmd !== 'help') {
-                        return 'Avant de foncer, tape `help` pour découvrir toutes les commandes disponibles.';
+                        return this.t('terminal.tutorialErrors.helpNotHelp');
                     }
                     break;
                 case 'pwd':
                     if (normalizedCmd !== 'pwd') {
-                        return 'Cette étape vérifie ta position : tape `pwd` pour afficher le chemin courant.';
+                        return this.t('terminal.tutorialErrors.pwdNotPwd');
                     }
                     break;
                 case 'ls':
                     if (normalizedCmd !== 'ls') {
-                        return 'Utilise `ls` (ou `ls -l`) pour afficher le contenu du dossier courant.';
+                        return this.t('terminal.tutorialErrors.lsNotLs');
                     }
                     break;
                 case 'cd-documents':
                     if (normalizedCmd !== 'cd') {
-                        return 'Rejoins le dossier `documents` avec la commande `cd`.';
+                        return this.t('terminal.tutorialErrors.cdDocumentsNotCd');
                     }
                     if (!paramsList.length) {
-                        return 'Précise le dossier à atteindre : `cd documents`.';
+                        return this.t('terminal.tutorialErrors.cdDocumentsNoParam');
                     }
                     if (!mentions('documents')) {
-                        return `Cette étape attend le dossier 'documents', pas '${firstParam}'.`;
+                        return this.t('terminal.tutorialErrors.cdDocumentsWrongTarget', { target: firstParam });
                     }
-                    return `Tu es encore sur ${currentPath || '/'}. Vise /home/user/documents.`;
+                    return this.t('terminal.tutorialErrors.cdDocumentsStillAt', { path: currentPath || '/' });
                 case 'cd-parent':
                     if (normalizedCmd !== 'cd') {
-                        return 'Utilise `cd` pour remonter d’un niveau.';
+                        return this.t('terminal.tutorialErrors.cdParentNotCd');
                     }
                     if (!paramsList.length) {
-                        return 'Ajoute `..` (ou `../`) après `cd` pour viser le dossier parent : `cd ..`.';
+                        return this.t('terminal.tutorialErrors.cdParentNoParam');
                     }
                     if (firstParam.replace(/\/+$/, '') !== '..') {
-                        return 'Cette étape vérifie l’utilisation de `cd ..` (ou `cd ../`). Réessaie avec ce raccourci.';
+                        return this.t('terminal.tutorialErrors.cdParentWrongParam');
                     }
-                    return 'Tu devrais voir /home/user comme dossier courant après `cd ..`.';
+                    return this.t('terminal.tutorialErrors.cdParentExpectedPath');
                 case 'cd-documents-return':
                     if (normalizedCmd !== 'cd') {
-                        return 'Après avoir reculé, reviens dans `documents` avec `cd`.';
+                        return this.t('terminal.tutorialErrors.cdReturnNotCd');
                     }
                     if (!paramsList.length) {
-                        return 'Précise la destination : `cd documents`.';
+                        return this.t('terminal.tutorialErrors.cdReturnNoParam');
                     }
                     if (!mentions('documents')) {
-                        return `Cette étape attend un retour vers 'documents', pas '${firstParam}'.`;
+                        return this.t('terminal.tutorialErrors.cdReturnWrongTarget', { target: firstParam });
                     }
-                    return 'On t’attend dans /home/user/documents avant de reprendre l’opération.';
+                    return this.t('terminal.tutorialErrors.cdReturnExpectedPath');
                 case 'ls-documents':
                     if (normalizedCmd !== 'ls') {
-                        return 'Utilise `ls` pour inspecter le contenu de `documents` avant d\'agir.';
+                        return this.t('terminal.tutorialErrors.lsDocumentsNotLs');
                     }
                     if (!currentPath.endsWith('/home/user/documents')) {
-                        return 'Reviens dans /home/user/documents puis lance `ls` pour voir ce qu\'il contient.';
+                        return this.t('terminal.tutorialErrors.lsDocumentsWrongPath');
                     }
-                    return 'Affiche la liste de documents avec `ls` pour confirmer ce qu\'il reste avant la suppression.';
+                    return this.t('terminal.tutorialErrors.lsDocumentsExpectedList');
                 case 'rm-archives':
                     if (normalizedCmd !== 'rm') {
-                        return 'On attend la suppression du dossier `archives` avec `rm`.';
+                        return this.t('terminal.tutorialErrors.rmArchivesNotRm');
                     }
                     if (!paramsList.length) {
-                        return 'Ajoute l\'élément à supprimer : `rm -r archives`.';
+                        return this.t('terminal.tutorialErrors.rmArchivesNoParam');
                     }
                     if (!mentions('archives')) {
-                        return 'La cible à supprimer est `archives`.';
+                        return this.t('terminal.tutorialErrors.rmArchivesWrongTarget');
                     }
                     if (!hasFlag('r')) {
-                        return 'Ajoute l\'option `-r` pour supprimer le dossier : `rm -r archives`.';
+                        return this.t('terminal.tutorialErrors.rmArchivesNoRecursive');
                     }
                     if (archivesExists) {
-                        return 'Le dossier `archives` existe encore. Lance `rm -r archives` depuis /home/user/documents.';
+                        return this.t('terminal.tutorialErrors.rmArchivesStillExists');
                     }
                     break;
                 case 'mkdir-mission':
                     if (normalizedCmd !== 'mkdir') {
-                        return 'Crée le dossier `mission` avec `mkdir`.';
+                        return this.t('terminal.tutorialErrors.mkdirMissionNotMkdir');
                     }
                     if (!paramsList.length) {
-                        return 'Indique le nom du dossier à créer : `mkdir mission`.';
+                        return this.t('terminal.tutorialErrors.mkdirMissionNoParam');
                     }
                     if (!mentions('mission')) {
-                        return `Le dossier attendu s'appelle 'mission', pas '${firstParam}'.`;
+                        return this.t('terminal.tutorialErrors.mkdirMissionWrongTarget', { target: firstParam });
                     }
-                    return 'Je ne vois toujours pas le dossier `mission` dans documents. Crée-le ici avant de continuer.';
+                    return this.t('terminal.tutorialErrors.mkdirMissionStillMissing');
                 case 'ls-mission-check':
                     if (normalizedCmd !== 'ls') {
-                        return 'Vérifie la présence du dossier `mission` avec `ls`.';
+                        return this.t('terminal.tutorialErrors.lsMissionNotLs');
                     }
                     if (!currentPath.endsWith('/home/user/documents')) {
-                        return 'Reste dans /home/user/documents pour contrôler que `mission` s\'y trouve.';
+                        return this.t('terminal.tutorialErrors.lsMissionWrongPath');
                     }
                     if (!missionExists) {
-                        return 'Crée d\'abord le dossier `mission`, puis relance `ls` pour le voir apparaître.';
+                        return this.t('terminal.tutorialErrors.lsMissionMissing');
                     }
-                    return 'J\'attends le résultat de `ls` montrant `mission` dans documents.';
+                    return this.t('terminal.tutorialErrors.lsMissionExpected');
                 case 'cd-mission':
                     if (normalizedCmd !== 'cd') {
-                        return 'Utilise `cd` pour te déplacer dans le dossier `mission`.';
+                        return this.t('terminal.tutorialErrors.cdMissionNotCd');
                     }
                     if (!paramsList.length) {
-                        return 'Ajoute le dossier cible : `cd mission`.';
+                        return this.t('terminal.tutorialErrors.cdMissionNoParam');
                     }
                     if (!mentions('mission')) {
-                        return `Cette étape attend le dossier 'mission', pas '${firstParam}'.`;
+                        return this.t('terminal.tutorialErrors.cdMissionWrongTarget', { target: firstParam });
                     }
-                    return `Le répertoire courant est ${currentPath || '/'}. Rejoins /home/user/documents/mission.`;
+                    return this.t('terminal.tutorialErrors.cdMissionWrongPath', { path: currentPath || '/' });
                 case 'touch-briefing':
                     if (normalizedCmd !== 'touch') {
-                        return 'Crée le fichier `briefing.txt` avec `touch`.';
+                        return this.t('terminal.tutorialErrors.touchBriefingNotTouch');
                     }
                     if (!paramsList.length) {
-                        return 'Indique le nom du fichier : `touch briefing.txt`.';
+                        return this.t('terminal.tutorialErrors.touchBriefingNoParam');
                     }
                     if (!mentions('briefing')) {
-                        return `Le fichier attendu est 'briefing.txt', pas '${firstParam}'.`;
+                        return this.t('terminal.tutorialErrors.touchBriefingWrongTarget', { target: firstParam });
                     }
                     if (!missionExists) {
-                        return 'Crée d\'abord le dossier `mission` puis exécute `touch briefing.txt` depuis ce dossier.';
+                        return this.t('terminal.tutorialErrors.touchBriefingNoMission');
                     }
                     if (!briefingExists) {
-                        return 'Le fichier n\'a pas été trouvé dans `mission`. Lance `touch briefing.txt` à cet emplacement.';
+                        return this.t('terminal.tutorialErrors.touchBriefingMissing');
                     }
                     break;
                 default:
@@ -2402,18 +2507,18 @@
         },
         buildCommandTooltip(commandText = '', state = '', output = '') {
             const cmdName = (commandText || '').trim().split(' ')[0] || '';
-            const baseDesc = this.commandDescriptions[cmdName] || (cmdName ? `Commande ${cmdName}` : 'Information système');
+            const baseDesc = this.commandDescriptions[cmdName] || (cmdName ? this.t('terminal.commandBaseDescription', { command: cmdName }) : this.t('terminal.systemInfo'));
             const cleanedOutput = this.sanitizeHistoryOutput(output);
             let stateNote = '';
             switch (state) {
                 case 'error':
-                    stateNote = cleanedOutput ? `Erreur : ${cleanedOutput}` : 'Erreur détectée.';
+                    stateNote = cleanedOutput ? this.t('terminal.errorPrefix', { output: cleanedOutput }) : this.t('terminal.errorDetectedShort');
                     break;
                 case 'warning':
-                    stateNote = cleanedOutput ? `Attention : ${cleanedOutput}` : 'Attention requise.';
+                    stateNote = cleanedOutput ? this.t('terminal.warningPrefix', { output: cleanedOutput }) : this.t('terminal.warningRequired');
                     break;
                 case 'info':
-                    stateNote = cleanedOutput || 'Suggestion du terminal.';
+                    stateNote = cleanedOutput || this.t('terminal.terminalSuggestion');
                     break;
                 default:
                     stateNote = cleanedOutput;
@@ -2498,6 +2603,7 @@
                 timestamp: new Date().toISOString(),
                 payload: {
                     ...payload,
+                    learningMode: this.learningMode,
                     path: typeof payload.path === 'string' && payload.path.trim()
                         ? payload.path.trim()
                         : this.getSessionPath(),
@@ -2536,7 +2642,7 @@
             )
                 .catch((error) => {
                     this.telemetryQueue = [...batch, ...this.telemetryQueue].slice(-100);
-                    this.telemetryLastError = error?.message || 'Erreur de synchronisation';
+                    this.telemetryLastError = error?.message || this.t('terminal.syncError');
                 })
                 .finally(() => {
                     this.telemetryFlushPromise = null;
@@ -2641,6 +2747,7 @@
             });
         },
         executeCommand() {
+            this.clearRobotTooltipOnUserAction();
             this.cursorHistory = 0;
             const issuedCommand = this.command;
             const trimmedInput = (issuedCommand || '').trim();
@@ -2658,7 +2765,7 @@
             let redirection = redirectionParse || null;
 
             if (redirection && !redirection.target) {
-                this.output = 'Redirection invalide : aucun fichier cible n\'a été indiqué.';
+                this.output = this.t('terminal.noRedirectionTarget');
                 this.pushCommandToHistory(issuedCommand, 'error', this.output);
                 this.command = '';
                 return;
@@ -2676,7 +2783,7 @@
             this.createOutputAnimate();
 
             if (redirection && !cmd) {
-                this.output = 'Redirection impossible : aucune commande à exécuter.';
+                this.output = this.t('terminal.redirectionNoCommand');
                 this.pushCommandToHistory(issuedCommand, 'error', this.output);
                 this.command = '';
                 return;
@@ -2757,7 +2864,7 @@
                     state = 'warning';
                     break;
                 default:
-                    this.output = `Commande inconnue : ${cmd}`;
+                    this.output = this.t('terminal.unknownCommand', { command: cmd });
                     state = 'error';
             }
 
@@ -2790,7 +2897,7 @@
             this.updateRobotMood(moodToApply);
             if (state === 'error') {
                 this.playSoundEffect('error');
-                const errorMessage = `Erreur détectée. ${this.getRandomErrorEncouragement()}`;
+                const errorMessage = this.t('terminal.errorDetected', { message: this.getRandomErrorEncouragement() });
                 this.announceRobot(errorMessage, {
                     duration: 3400,
                     mood: 'error',
@@ -2953,38 +3060,73 @@
                 this.robotTooltip.timer = null;
             }
         },
-        showRobotTooltipMessage(message, { duration = 4800, auto = false, type = 'default', icon = '' } = {}) {
+        getRobotTooltipDuration(message = '', type = 'default', explicitDuration = null) {
+            const plainMessage = this.sanitizeHistoryOutput(message)
+                .replace(/\[[^\]]+\]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const wordCount = plainMessage ? plainMessage.split(/\s+/).length : 0;
+            const baseDurations = {
+                success: 2600,
+                warning: 3400,
+                error: 3800,
+                info: 3600,
+                default: 2800,
+            };
+            const baseDuration = baseDurations[type] || baseDurations.default;
+            const readingDuration = baseDuration + (wordCount * 330);
+            const computedDuration = Math.min(Math.max(readingDuration, 3200), 14000);
+
+            return explicitDuration
+                ? Math.max(explicitDuration, computedDuration)
+                : computedDuration;
+        },
+        clearRobotTooltipOnUserAction() {
+            if (!this.robotTooltip.persistentUntilAction && !this.tutorialGuidance.persistentId) {
+                return;
+            }
+            this.clearTutorialRobotHint();
+            this.robotTooltip.visible = false;
+            this.robotTooltip.auto = false;
+            this.robotTooltip.persistentUntilAction = false;
+            this.clearRobotTooltipTimer();
+        },
+        showRobotTooltipMessage(message, { duration = null, auto = false, type = 'default', icon = '', persistentUntilAction = false } = {}) {
             this.clearRobotTooltipTimer();
             this.robotTooltip.message = this.highlightCommandNames(message || '');
             this.robotTooltip.visible = true;
-            this.robotTooltip.auto = auto;
+            this.robotTooltip.auto = auto && !persistentUntilAction;
+            this.robotTooltip.persistentUntilAction = !!persistentUntilAction;
             this.robotTooltip.type = type || 'default';
             this.robotTooltip.icon = icon || '';
-            if (auto) {
+            if (this.robotTooltip.auto) {
+                const resolvedDuration = this.getRobotTooltipDuration(message, type, duration);
                 this.robotTooltip.timer = setTimeout(() => {
                     if (this.robotTooltip.auto) {
                         this.robotTooltip.visible = false;
                         this.robotTooltip.auto = false;
+                        this.robotTooltip.persistentUntilAction = false;
                     }
                     this.robotTooltip.timer = null;
-                }, duration);
+                }, resolvedDuration);
             }
         },
-        announceRobot(message, { duration = 5200, mood = null, type = 'default', icon = '' } = {}) {
+        announceRobot(message, { duration = null, mood = null, type = 'default', icon = '', persistentUntilAction = false } = {}) {
             if (mood) {
                 this.updateRobotMood(mood);
             }
-            this.showRobotTooltipMessage(message, { duration, auto: true, type, icon });
+            this.showRobotTooltipMessage(message, { duration, auto: true, type, icon, persistentUntilAction });
             this.tutorialGuidance.persistentId = null;
         },
         showTutorialRobotHint(id, message) {
-            if (!message || this.robotHovering || this.robotMood !== 'default') {
+            if (!this.showRobotEducationalHints || !message || this.robotHovering || this.robotMood !== 'default') {
                 return;
             }
             this.showRobotTooltipMessage(message, {
                 auto: false,
                 type: 'info',
                 icon: 'mdi-information-outline',
+                persistentUntilAction: true,
             });
             this.robotTooltip.auto = false;
             this.tutorialGuidance.persistentId = id;
@@ -2997,6 +3139,7 @@
                 return;
             }
             this.tutorialGuidance.persistentId = null;
+            this.robotTooltip.persistentUntilAction = false;
             if (!this.robotTooltip.auto) {
                 this.robotTooltip.visible = false;
             }
@@ -3007,11 +3150,12 @@
                 this.tutorial.showIntro ||
                 this.tutorial.completed ||
                 !this.showCommandHint ||
+                !this.showRobotEducationalHints ||
                 this.tutorialGuidance.introShown
             ) {
                 return;
             }
-            this.showTutorialRobotHint('intro', 'Bienvenue dans le cockpit ! Clique sur le champ de saisie pour prendre les commandes.');
+            this.showTutorialRobotHint('intro', this.t('terminal.tutorialIntroHint'));
             this.tutorialGuidance.introShown = true;
         },
         maybeShowTutorialHelpHint() {
@@ -3020,12 +3164,13 @@
                 this.tutorial.showIntro ||
                 this.tutorial.completed ||
                 this.showCommandHint ||
+                !this.showRobotEducationalHints ||
                 this.tutorial.currentStep !== 0 ||
                 this.tutorialGuidance.helpHintShown
             ) {
                 return;
             }
-            this.showTutorialRobotHint('help', 'Tu es maintenant aux commandes. Besoin d’un coup de pouce ? Tape simplement `help`. Puis valide avec Entrée. ↵');
+            this.showTutorialRobotHint('help', this.t('terminal.tutorialHelpHint'));
             this.tutorialGuidance.helpHintShown = true;
         },
         buildTreePathNodes(startNode, endNode) {
@@ -3292,7 +3437,7 @@
                 this.stopTalkSound();
                 this.stopAllActiveAudios();
             }
-            this.showRobotSoundToast(nextState ? 'Son activé 🔊' : 'Son coupé 🔇');
+            this.showRobotSoundToast(nextState ? this.t('terminal.soundOn') : this.t('terminal.soundOff'));
             if (nextState) {
                 this.playSoundEffect('beep');
             }
@@ -3311,6 +3456,9 @@
         },
         handleRobotHover() {
             this.robotHovering = true;
+            if (this.robotTooltip.persistentUntilAction) {
+                return;
+            }
             this.clearRobotMoodTimers();
             this.clearTutorialRobotHint();
             this.robotJumping = false;
@@ -3327,11 +3475,13 @@
         },
         handleRobotLeave() {
             this.robotHovering = false;
-            if (!this.robotTooltip.auto) {
+            if (!this.robotTooltip.auto && !this.robotTooltip.persistentUntilAction) {
                 this.robotTooltip.visible = false;
             }
-            this.robotTooltip.auto = false;
-            this.clearRobotTooltipTimer();
+            if (!this.robotTooltip.persistentUntilAction) {
+                this.robotTooltip.auto = false;
+                this.clearRobotTooltipTimer();
+            }
             this.robotMood = 'default';
             this.triggerRobotFlicker();
             this.scheduleNeutralBlink();
@@ -3340,8 +3490,8 @@
         getRobotDialogue() {
             if (!this.robotTooltip.greetingShown) {
                 this.robotTooltip.greetingShown = true;
-                this.robotTooltip.lastMessage = 'Salut !';
-                return '👋 Salut ! Je suis ECHO, ton assistant virtuel. Tu peux couper ou activer mon son 🔊 en cliquant sur ma tête.';
+                this.robotTooltip.lastMessage = this.t('terminal.robotGreetingShort');
+                return this.t('terminal.robotGreeting');
             }
             let message = this.robotTooltip.lastMessage;
             const pool = this.robotDialoguePool;
@@ -3366,26 +3516,15 @@
         getRandomErrorEncouragement() {
             const pool = this.robotErrorEncouragements || [];
             if (!pool.length) {
-                return 'Tu vas y arriver.';
+                return this.t('terminal.defaultErrorEncouragement');
             }
             const idx = Math.floor(Math.random() * pool.length);
             return pool[idx];
         },
         getMnemonicHint(stepId) {
-            const hints = {
-                pwd: '[strong]Astuce mémo[/strong]: `pwd` signifie **Path Way Directory**, pour afficher ta position actuelle.',
-                ls: '[strong]Astuce mémo[/strong]: `ls` vient de **List**, il affiche le contenu du dossier.',
-                'cd-documents': '[strong]Astuce mémo[/strong]: `cd` signifie **Change Directory**, idéal pour entrer dans un dossier.',
-                'cd-parent': '[strong]Astuce mémo[/strong]: `cd ..` remonte d’un cran — **Change Directory** vers le parent.',
-                'cd-documents-return': '[strong]Astuce mémo[/strong]: `cd documents` te ramène dans le dossier ciblé (**Change Directory**).',
-                'ls-documents': '[strong]Astuce mémo[/strong]: `ls` (pour **List**) confirme d’un coup d’œil ce que contient un dossier.',
-                'cd-mission': '[strong]Astuce mémo[/strong]: utilise `cd` (**Change Directory**) pour entrer dans mission.',
-                'rm-archives': '[strong]Astuce mémo[/strong]: `rm` vient de **Remove**, utile pour supprimer.',
-                'mkdir-mission': '[strong]Astuce mémo[/strong]: `mkdir` signifie **Make Directory**, pour créer un dossier.',
-                'ls-mission-check': '[strong]Astuce mémo[/strong]: un `ls` après `mkdir` te confirme instantanément que le dossier existe.',
-                'touch-briefing': '[strong]Astuce mémo[/strong]: `touch` crée ou met à jour un fichier en une commande.',
-            };
-            return hints[stepId] || '';
+            const key = `terminal.mnemonicHints.${stepId}`;
+            const hint = this.t(key);
+            return hint === key ? '' : hint;
         },
         escapeHtml(text = '') {
             return text
@@ -3399,8 +3538,12 @@
             }
             let safeMessage = this.escapeHtml(message);
             safeMessage = safeMessage
-                .replace(/\[strong\](.+?)\[\/strong\]/gi, '<strong>$1</strong>');
-            safeMessage = safeMessage.replace(/<code>(.+?)<\/code>/gi, (_m, content) => {
+                .replace(/\[strong\](.+?)\[\/strong\]/gi, '<strong>$1</strong>')
+                .replace(/&lt;strong&gt;(.+?)&lt;\/strong&gt;/gi, '<strong>$1</strong>');
+            safeMessage = safeMessage.replace(/`([^`]+)`/g, (_m, content) => {
+                const highlighted = `<span class="robot-command">${content}</span>`;
+                return `<span class="robot-mnemonic">${highlighted}</span>`;
+            }).replace(/&lt;code&gt;(.+?)&lt;\/code&gt;/gi, (_m, content) => {
                 const highlighted = `<span class="robot-command">${content}</span>`;
                 return `<span class="robot-mnemonic">${highlighted}</span>`;
             }).replace(/\*\*(.+?)\*\*/g, (_m, content) => {
@@ -3523,62 +3666,30 @@
             }
             remainder = remainder.trim();
             if (!remainder) {
-                return { error: 'Redirection invalide : aucun fichier cible n\'a été indiqué.' };
+                return { error: this.t('terminal.noRedirectionTarget') };
             }
             const targets = this.tokenizeArguments(remainder);
             if (!targets.length) {
-                return { error: 'Redirection invalide : aucun fichier cible n\'a été indiqué.' };
+                return { error: this.t('terminal.noRedirectionTarget') };
             }
             if (targets.length > 1) {
-                return { error: 'Redirection invalide : une seule cible est autorisée.' };
+                return { error: this.t('terminal.invalidRedirectionOneTarget') };
             }
             return { append, target: targets[0] };
         },
         getHelp(cmd = '') {
-            const helpMessages = {
-                '': `
-                    Commandes disponibles :
-                    - man : Affiche l'aide détaillée d'une commande
-                    - help : Affiche ce message d'aide
-                    - pwd : Affiche le chemin du répertoire courant
-                    - echo : Affiche un message
-                    - cd : Change de répertoire
-                    - ls : Liste les fichiers et dossiers
-                    - ll : 'Alias de ls -l : liste détaillée des fichiers.',
-                    - mkdir : Crée un nouveau dossier
-                    - touch : Crée un nouveau fichier
-                    - rm : Supprime un fichier ou un dossier
-                    - chmod : Change les permissions d'un fichier ou d'un dossier
-                    - cat : Lit et affiche le contenu d'un fichier (peut être redirigé avec > ou >>)
-                    - head : Affiche les premières lignes d'un fichier (option -n)
-                    - tail : Affiche les dernières lignes d'un fichier (option -n)
-                    - nano : Ouvre un éditeur pour modifier un fichier
-                `,
-                'pwd': 'Usage: pwd [-h]\nAffiche le chemin du répertoire courant.',
-                'echo': 'Usage: echo [-h] [message]\nAffiche un message.',
-                'cd': 'Usage: cd [-h] [répertoire]\nChange de répertoire.',
-                'ls': 'Usage: ls [-h] [-a] [-l]\nListe les fichiers et dossiers.',
-                'mkdir': 'Usage: mkdir [-h] [dossier]\nCrée un nouveau dossier.',
-                'touch': 'Usage: touch [-h] [fichier]\nCrée un nouveau fichier.',
-                'rm': 'Usage: rm [-h] [-r] [fichier|dossier]\nSupprime un fichier ou un dossier.',
-                'chmod': 'Usage: chmod [-h] [permissions] [fichier|dossier]\nChange les permissions d\'un fichier ou d\'un dossier.',
-                'cat': 'Usage: cat [-h] fichier...\nAffiche le contenu d\'un ou plusieurs fichiers.',
-                'head': 'Usage: head [-h] [-n nombre] fichier...\nAffiche les premières lignes (10 par défaut).',
-                'tail': 'Usage: tail [-h] [-n nombre] fichier...\nAffiche les dernières lignes (10 par défaut).',
-                'nano': 'Usage: nano [-h] fichier\nOuvre un éditeur graphique pour modifier le fichier.',
-                'man': 'Usage: man [commande]\nAffiche la documentation détaillée d\'une commande disponible dans cet environnement.'
-            };
-            return helpMessages[cmd] || `Commande inconnue : ${cmd}`;
+            const helpMessages = tm('terminal.helpMessages') || {};
+            return helpMessages[cmd] || this.t('terminal.unknownCommand', { command: cmd });
         },
         manCommand(topic = '') {
             if (!topic) {
-                this.output = 'Usage: man <commande>';
+                this.output = this.t('terminal.manUsage');
                 return 'warning';
             }
 
             const manual = this.getManual(topic);
             if (!manual) {
-                this.output = `Aucune page de manuel pour '${topic}'.`;
+                this.output = this.t('terminal.noManual', { topic });
                 return 'warning';
             }
 
@@ -3586,226 +3697,7 @@
             return 'valid';
         },
         getManual(topic) {
-            const manuals = {
-                man: `
-MAN(1)                             Commandes Shell                             MAN(1)
-
-NOM
-    man - affiche l'aide détaillée disponible dans ce simulateur.
-
-SYNOPSIS
-    man <commande>
-
-DESCRIPTION
-    Affiche une description, la syntaxe et les options implémentées ici pour la commande cible.
-
-OPTIONS
-    (aucune complémentaire)
-
-REMARQUE
-    Seules les commandes simulées disposent d'une page de manuel.
-`,
-                help: `
-HELP(1)                            Commandes Shell                            HELP(1)
-
-NOM
-    help - liste l'ensemble des commandes supportées.
-
-SYNOPSIS
-    help [commande]
-
-DESCRIPTION
-    Sans argument, affiche toutes les commandes disponibles. Avec une commande,
-    renvoie un bref rappel d'usage. Pour plus de détails, utilisez 'man <commande>'.
-`,
-                pwd: `
-PWD(1)                             Commandes Shell                             PWD(1)
-
-NOM
-    pwd - imprime le chemin absolu du répertoire courant.
-
-SYNOPSIS
-    pwd
-
-OPTIONS
-    (aucune)
-
-REMARQUES
-    Le chemin est calculé à partir de la racine simulée 'root'.
-`,
-                echo: `
-ECHO(1)                            Commandes Shell                            ECHO(1)
-
-NOM
-    echo - affiche une ligne de texte.
-
-SYNOPSIS
-    echo <texte>
-
-DESCRIPTION
-    Renvoie exactement les arguments fournis.
-`,
-                cd: `
-CD(1)                              Commandes Shell                              CD(1)
-
-NOM
-    cd - change le répertoire courant.
-
-SYNOPSIS
-    cd [chemin]
-
-OPTIONS
-    .   répertoire courant
-    ..  répertoire parent
-    /   chemins absolus à partir de root
-
-REMARQUES
-    Nécessite l'exécution (x) sur chaque dossier traversé.
-`,
-                ls: `
-LS(1)                              Commandes Shell                              LS(1)
-
-NOM
-    ls - liste le contenu d'un dossier.
-
-SYNOPSIS
-    ls [-a] [-l] [chemin]
-
-OPTIONS
-    -a  inclut les fichiers cachés
-    -l  vue détaillée (droits, propriétaire, date)
-
-REMARQUES
-    Le chemin peut être relatif ou absolu. Requiert les droits r+x sur la cible.
-`,
-                mkdir: `
-MKDIR(1)                           Commandes Shell                           MKDIR(1)
-
-NOM
-    mkdir - crée un ou plusieurs dossiers.
-
-SYNOPSIS
-    mkdir [-p] dossier...
-
-OPTIONS
-    -p  crée les dossiers parents manquants sans erreur si existants
-
-REMARQUES
-    Vérifie les droits w+x sur chaque dossier parent modifié.
-`,
-                touch: `
-TOUCH(1)                           Commandes Shell                           TOUCH(1)
-
-NOM
-    touch - crée un fichier vide ou met à jour sa date.
-
-SYNOPSIS
-    touch fichier...
-
-OPTIONS
-    (implémentation simplifiée : -a/-m acceptés mais effectuent la même mise à jour de date)
-
-REMARQUES
-    Crée les fichiers inexistants dans le répertoire cible si les droits w+x sont présents.
-`,
-                cat: `
-CAT(1)                             Commandes Shell                             CAT(1)
-
-NOM
-    cat - lit et affiche le contenu de fichiers.
-
-SYNOPSIS
-    cat fichier...
-
-DESCRIPTION
-    Imprime les fichiers fournis dans l'ordre. La sortie peut être redirigée avec
-    '>' ou '>>' pour écrire dans un autre fichier stocké en mémoire.
-
-LIMITES
-    Chaque fichier de cette simulation est plafonné à 40 Mo.
-`,
-                head: `
-HEAD(1)                            Commandes Shell                            HEAD(1)
-
-NOM
-    head - affiche le début d'un fichier.
-
-SYNOPSIS
-    head [-n nombre] fichier...
-
-DESCRIPTION
-    Retourne les premières lignes de chaque fichier (10 par défaut).
-    Accepte '-n 25' ou '-n25' pour personnaliser le nombre de lignes.
-`,
-                tail: `
-TAIL(1)                            Commandes Shell                            TAIL(1)
-
-NOM
-    tail - affiche la fin d'un fichier.
-
-SYNOPSIS
-    tail [-n nombre] fichier...
-
-DESCRIPTION
-    Retourne les dernières lignes de chaque fichier (10 par défaut).
-    Accepte '-n 25' ou '-n25' pour personnaliser le nombre de lignes.
-`,
-                nano: `
-NANO(1)                            Commandes Shell                            NANO(1)
-
-NOM
-    nano - édite un fichier texte dans une fenêtre dédiée.
-
-SYNOPSIS
-    nano fichier
-
-DESCRIPTION
-    Ouvre un éditeur graphique simulé affichant le contenu du fichier et
-    permet de modifier puis enregistrer le texte. Les fichiers dépassant
-    40 Mo ne sont pas supportés.
-
-REMARQUES
-    Le fichier est créé s'il n'existe pas, sous réserve de permissions suffisantes.
-`,
-                rm: `
-RM(1)                              Commandes Shell                              RM(1)
-
-NOM
-    rm - supprime fichiers ou dossiers.
-
-SYNOPSIS
-    rm [-r] [-f] [-i] motif...
-
-OPTIONS
-    -r  supprime récursivement les dossiers
-    -f  ignore les erreurs et confirmations
-    -i  demande confirmation pour chaque élément (désactivé si -f)
-
-REMARQUES
-    Les motifs utilisent '*' pour la correspondance générique. Requiert w+x sur le dossier parent.
-`,
-                chmod: `
-CHMOD(1)                           Commandes Shell                           CHMOD(1)
-
-NOM
-    chmod - modifie les permissions d'un fichier ou dossier.
-
-SYNOPSIS
-    chmod [-R] mode cible...
-
-MODES
-    Numérique : 755, 644...
-    Symbolique : u+r, g-w, a=rw, u+rwx,g+rx,o-r...
-    Plusieurs segments séparés par des virgules sont pris en charge.
-
-OPTIONS
-    -R  applique la modification récursivement aux sous-dossiers/fichiers.
-
-REMARQUES
-    Seul le propriétaire peut modifier les permissions dans cette simulation.
-`
-            };
-
+            const manuals = tm('terminal.manuals') || {};
             return manuals[topic];
         },
         echo(params = []){
@@ -3883,7 +3775,7 @@ REMARQUES
                 this.changeDirectory("home/user", options)
                 this.cDirect.to = this.currentNode.data.name;
                 if (!silent) {
-                    this.output = `Deplacement vers le dossier personnel (par default) : ${this.currentNode.data.name}`;
+                    this.output = this.t('terminal.folderHomeDefault', { name: this.currentNode.data.name });
                 }
                 this.refreshTreeView(this.currentNode, { signal: !silent });
                 return "valid";
@@ -3932,7 +3824,7 @@ REMARQUES
                         }
                         if (dirName === '..' && this.currentNode && this.currentNode != this.root) {
                             if (!this.hasPermission(this.currentNode.parent, 'x')) {
-                                this.output = `Permissions non accordées pour accéder au dossier parent '${this.currentNode.parent.data.name}'.`;
+                                this.output = this.t('terminal.parentPermissionDenied', { name: this.currentNode.parent.data.name });
                                 return 'warning';
                             }
                             if (this.currentNode.parent.children) {
@@ -3953,7 +3845,7 @@ REMARQUES
                             
                             if (found) {
                                 if (!this.hasPermission(found, 'x')) {
-                                    this.output = `Permissions non accordées pour accéder au dossier '${found.data.name}'.`;
+                                    this.output = this.t('terminal.folderPermissionDenied', { name: found.data.name });
                                     return 'warning';
                                 }
                                 if (this.currentNode._children && !this.currentNode.children) {
@@ -3969,7 +3861,7 @@ REMARQUES
                                 this.currentNode = found;
                             } 
                             else {
-                                this.output = `Dossier non trouvé : ${dirName}`;
+                                this.output = this.t('terminal.folderNotFound', { name: dirName });
                                 return 'warning';
                             }
                         }
@@ -3982,7 +3874,7 @@ REMARQUES
 
             if (!silent) {
                 this.pwd = ""
-                this.output = `Dossier actuel : ${this.currentNode.data.name}`;
+                this.output = this.t('terminal.folderCurrent', { name: this.currentNode.data.name });
                 this.createOutputAnimate()
                 this.trackDirectoryVisit(this.getPath(this.currentNode));
             } else if (!this.pwd) {
@@ -4051,7 +3943,7 @@ REMARQUES
             const targetNode = dirPath ? this.resolvePath(dirPath) : this.currentNode;
 
             if (!targetNode) {
-                this.output = `Erreur : Répertoire '${dirPath}' introuvable.`;
+                this.output = this.t('terminal.directoryNotFound', { path: dirPath });
                 return;
             }
 
@@ -4063,7 +3955,7 @@ REMARQUES
 
             // Vérifie les permissions de lecture
             if (!this.hasPermission(targetNode, ['r', 'x'])) {
-                this.output = "Permissions non accordées pour lire ce dossier.";
+                this.output = this.t('terminal.readPermissionDenied');
                 return;
             }
 
@@ -4089,7 +3981,7 @@ REMARQUES
             
             // Génère la sortie
             if (children.length === 0) {
-                this.output = "Dossier vide";
+                this.output = this.t('terminal.emptyFolder');
                 targetNode.children = beforChild;
                 return;
             } 
@@ -4116,7 +4008,7 @@ REMARQUES
         },
         makeDirectory(params) {//mkdir
             if (!params) {
-                this.output = 'Nom de dossier requis';
+                this.output = this.t('terminal.folderNameRequired');
                 return;
             }
 
@@ -4125,7 +4017,7 @@ REMARQUES
             const dirNames = args.filter((arg) => !arg.startsWith('-'));
 
             if (!dirNames.length) {
-                this.output = 'Aucun nom de dossier fourni';
+                this.output = this.t('terminal.noFolderName');
                 return 'error';
             }
 
@@ -4135,7 +4027,7 @@ REMARQUES
 
             for (const rawPath of dirNames) {
                 if (!rawPath || rawPath === '.' || rawPath === '/') {
-                    errors.push(`mkdir: chemin invalide '${rawPath || ''}'`);
+                    errors.push(this.t('terminal.mkdirInvalidPath', { path: rawPath || '' }));
                     continue;
                 }
 
@@ -4161,13 +4053,13 @@ REMARQUES
 
                     if (existing) {
                         if (existing.data.type !== 'd') {
-                            errors.push(`mkdir: impossible de créer le dossier '${rawPath}': Un fichier porte déjà ce nom`);
+                            errors.push(this.t('terminal.mkdirFileExistsName', { path: rawPath }));
                             failed = true;
                             break;
                         }
 
                         if (isLast && !allowParents) {
-                            errors.push(`mkdir: impossible de créer le dossier '${rawPath}': Le fichier existe`);
+                            errors.push(this.t('terminal.mkdirExists', { path: rawPath }));
                             failed = true;
                             break;
                         }
@@ -4177,13 +4069,13 @@ REMARQUES
                     }
 
                     if (!isLast && !allowParents) {
-                        errors.push(`mkdir: impossible de créer le dossier '${rawPath}': Chemin intermédiaire manquant`);
+                        errors.push(this.t('terminal.mkdirMissingParent', { path: rawPath }));
                         failed = true;
                         break;
                     }
 
                     if (!this.hasPermission(current, ['w', 'x'])) {
-                        this.output = `Permissions non accordées pour créer un dossier dans '${current.data.name}'.`;
+                        this.output = this.t('terminal.mkdirPermissionDenied', { name: current.data.name });
                         return 'warning';
                     }
 
@@ -4199,7 +4091,7 @@ REMARQUES
                 this.preserveCurrentPath();
                 this.createTree({ preserveSelection: true });
                 this.emitTreeSignal();
-                this.output = `Dossier(s) créé(s) : ${createdDirs.join(', ')}`;
+                this.output = this.t('terminal.foldersCreated', { items: createdDirs.join(', ') });
                 if (errors.length) {
                     this.output += ` | ${errors.join(' | ')}`;
                 }
@@ -4208,12 +4100,12 @@ REMARQUES
                 return 'valid';
             }
 
-            this.output = errors.join(' | ') || 'Aucun dossier créé';
+            this.output = errors.join(' | ') || this.t('terminal.noFolderCreated');
             return errors.length ? 'warning' : 'valid';
         },
         createFile(params) {//touch
             if (!params) {
-                this.output = 'Nom de fichier requis';
+                this.output = this.t('terminal.fileNameRequired');
                 return;
             }
 
@@ -4222,7 +4114,7 @@ REMARQUES
             const files = args.filter((arg) => !arg.startsWith('-'));
 
             if (!files.length) {
-                this.output = 'Aucun fichier spécifié';
+                this.output = this.t('terminal.noFileSpecified');
                 return;
             }
 
@@ -4236,7 +4128,7 @@ REMARQUES
             for (const filePath of files) {
                 const targetInfo = this.getNodeFromPath(filePath, { stopBeforeLast: true, includeFiles: true });
                 if (!targetInfo || !targetInfo.targetName) {
-                    errors.push(`touch: chemin invalide '${filePath}'`);
+                    errors.push(this.t('terminal.touchInvalidPath', { path: filePath }));
                     continue;
                 }
 
@@ -4246,12 +4138,12 @@ REMARQUES
 
                 if (existing) {
                     if (existing.data.type === 'd') {
-                        errors.push(`touch: '${filePath}' est un dossier`);
+                        errors.push(this.t('terminal.touchIsDirectory', { path: filePath }));
                         continue;
                     }
 
                     if (!this.hasPermission(existing, 'w')) {
-                        errors.push(`touch: permissions insuffisantes pour modifier '${filePath}'`);
+                        errors.push(this.t('terminal.touchModifyPermission', { path: filePath }));
                         continue;
                     }
 
@@ -4261,7 +4153,7 @@ REMARQUES
                 }
 
                 if (!this.hasPermission(parentNode, ['w', 'x'])) {
-                    errors.push(`touch: permissions insuffisantes dans '${parentNode.data.name}'`);
+                    errors.push(this.t('terminal.touchParentPermission', { name: parentNode.data.name }));
                     continue;
                 }
 
@@ -4275,10 +4167,10 @@ REMARQUES
                 this.emitTreeSignal();
                 const messages = [];
                 if (created.length) {
-                    messages.push(`Fichier(s) créé(s) : ${created.join(', ')}`);
+                    messages.push(this.t('terminal.filesCreated', { items: created.join(', ') }));
                 }
                 if (updated.length) {
-                    messages.push(`Horodatage mis à jour : ${updated.join(', ')}`);
+                    messages.push(this.t('terminal.timestampUpdated', { items: updated.join(', ') }));
                 }
                 if (errors.length) {
                     messages.push(errors.join(' | '));
@@ -4291,14 +4183,14 @@ REMARQUES
                 return;
             }
 
-            this.output = errors.join(' | ') || 'Aucun fichier traité';
+            this.output = errors.join(' | ') || this.t('terminal.noFileProcessed');
         },
         catCommand(params = []) {
             const args = Array.isArray(params)
                 ? params.filter((arg) => typeof arg === 'string' && arg.trim() !== '')
                 : (params ? [params] : []);
             if (!args.length) {
-                this.output = 'cat: indique au moins un fichier.';
+                this.output = this.t('terminal.catNeedFile');
                 return { state: 'warning', stdout: '' };
             }
 
@@ -4312,12 +4204,12 @@ REMARQUES
                 const fileNode = nodeInfo?.node;
 
                 if (!fileNode || fileNode.data.type !== 'f') {
-                    errors.push(`cat: ${targetPath}: fichier introuvable`);
+                    errors.push(this.t('terminal.fileNotFound', { command: 'cat', path: targetPath }));
                     continue;
                 }
 
                 if (!this.hasPermission(fileNode, 'r')) {
-                    errors.push(`cat: ${targetPath}: permission refusée`);
+                    errors.push(this.t('terminal.permissionDenied', { command: 'cat', path: targetPath }));
                     continue;
                 }
 
@@ -4355,12 +4247,12 @@ REMARQUES
                 if (arg === '-n') {
                     const next = args[i + 1];
                     if (next === undefined) {
-                        result.error = `${commandName}: l'option -n requiert une valeur.`;
+                        result.error = this.t('terminal.lineOptionRequiresValue', { command: commandName });
                         break;
                     }
                     const parsed = parseInt(next, 10);
                     if (!Number.isFinite(parsed) || parsed < 0) {
-                        result.error = `${commandName}: valeur invalide '${next}' pour -n.`;
+                        result.error = this.t('terminal.lineOptionInvalidValue', { command: commandName, value: next });
                         break;
                     }
                     result.count = parsed;
@@ -4371,7 +4263,7 @@ REMARQUES
                     const value = arg.slice(2);
                     const parsed = parseInt(value, 10);
                     if (!Number.isFinite(parsed) || parsed < 0) {
-                        result.error = `${commandName}: valeur invalide '${value}' pour -n.`;
+                        result.error = this.t('terminal.lineOptionInvalidValue', { command: commandName, value });
                         break;
                     }
                     result.count = parsed;
@@ -4389,7 +4281,7 @@ REMARQUES
                 return { state: 'error', stdout: '', stderr: parsed.error };
             }
             if (!parsed.files.length) {
-                const msg = 'head: indique au moins un fichier.';
+                const msg = this.t('terminal.headNeedFile');
                 this.output = msg;
                 return { state: 'warning', stdout: '', stderr: msg };
             }
@@ -4407,7 +4299,7 @@ REMARQUES
                 return { state: 'error', stdout: '', stderr: parsed.error };
             }
             if (!parsed.files.length) {
-                const msg = 'tail: indique au moins un fichier.';
+                const msg = this.t('terminal.tailNeedFile');
                 this.output = msg;
                 return { state: 'warning', stdout: '', stderr: msg };
             }
@@ -4423,7 +4315,7 @@ REMARQUES
                 ? params.filter((arg) => typeof arg === 'string' && arg.trim() !== '')
                 : (params ? [params] : []);
             if (!args.length) {
-                this.output = 'nano: indique un fichier à éditer.';
+                this.output = this.t('terminal.nanoNeedFile');
                 return 'warning';
             }
             const targetPath = args[0];
@@ -4431,18 +4323,18 @@ REMARQUES
             let fileNode = fileLookup?.node;
 
             if (fileNode && fileNode.data.type === 'd') {
-                this.output = `nano: '${targetPath}' est un dossier.`;
+                this.output = this.t('terminal.nanoIsDirectory', { path: targetPath });
                 return 'error';
             }
 
             if (!fileNode) {
                 const parentInfo = this.getNodeFromPath(targetPath, { stopBeforeLast: true, includeFiles: true });
                 if (!parentInfo || !parentInfo.node || !parentInfo.targetName) {
-                    this.output = `nano: chemin invalide '${targetPath}'.`;
+                    this.output = this.t('terminal.nanoInvalidPath', { path: targetPath });
                     return 'error';
                 }
                 if (!this.hasPermission(parentInfo.node, ['w', 'x'])) {
-                    this.output = `nano: permissions insuffisantes dans '${parentInfo.node.data.name}'.`;
+                    this.output = this.t('terminal.nanoParentPermission', { name: parentInfo.node.data.name });
                     return 'error';
                 }
                 fileNode = this.createFileNode(parentInfo.node, parentInfo.targetName);
@@ -4452,13 +4344,13 @@ REMARQUES
                 this.stats.createdFile = true;
                 this.checkBadges();
             } else if (!this.hasPermission(fileNode, ['r', 'w'])) {
-                this.output = `nano: permissions insuffisantes pour éditer '${targetPath}'.`;
+                this.output = this.t('terminal.nanoEditPermission', { path: targetPath });
                 return 'error';
             }
 
             const fileContent = typeof fileNode.data.content === 'string' ? fileNode.data.content : '';
             this.openNanoEditor(targetPath, fileContent);
-            this.output = `nano: édition ouverte pour '${targetPath}'.`;
+            this.output = this.t('terminal.nanoOpened', { path: targetPath });
             return 'valid';
         },
         openNanoEditor(filePath, content = '') {
@@ -4478,7 +4370,7 @@ REMARQUES
         },
         saveNanoEditor() {
             if (!this.nanoEditor.filePath) {
-                this.nanoEditor.error = 'Aucun fichier à sauvegarder.';
+                this.nanoEditor.error = this.t('terminal.nanoNoFileToSave');
                 return;
             }
             const targetPath = this.nanoEditor.filePath;
@@ -4497,7 +4389,7 @@ REMARQUES
             }
             this.nanoEditor.error = '';
             this.closeNanoEditor();
-            this.output = `nano: '${targetPath}' sauvegardé (${this.getByteLength(buffer)} octets).`;
+            this.output = this.t('terminal.nanoSaved', { path: targetPath, bytes: this.getByteLength(buffer) });
         },
         processFileLineOutput({ files = [], count = 10, commandName = 'head', mode = 'head' }) {
             const outputs = [];
@@ -4510,11 +4402,11 @@ REMARQUES
                 const nodeInfo = this.getNodeFromPath(filePath, { includeFiles: true });
                 const fileNode = nodeInfo?.node;
                 if (!fileNode || fileNode.data.type !== 'f') {
-                    errors.push(`${commandName}: ${filePath}: fichier introuvable`);
+                    errors.push(this.t('terminal.fileNotFound', { command: commandName, path: filePath }));
                     return;
                 }
                 if (!this.hasPermission(fileNode, 'r')) {
-                    errors.push(`${commandName}: ${filePath}: permission refusée`);
+                    errors.push(this.t('terminal.permissionDenied', { command: commandName, path: filePath }));
                     return;
                 }
 
@@ -4575,19 +4467,20 @@ REMARQUES
 
             const targetLabel = writeResult.path || redirection.target;
             const charCount = normalizedPayload.length;
-            const label = charCount > 1 ? 'caractères' : 'caractère';
-            this.output = `Redirection: ${redirection.append ? 'ajouté' : 'écrit'} ${charCount} ${label} dans '${targetLabel}'.`;
+            const label = charCount > 1 ? this.t('terminal.characterPlural') : this.t('terminal.characterSingular');
+            const mode = redirection.append ? this.t('terminal.redirectionAppendMode') : this.t('terminal.redirectionWrittenMode');
+            this.output = this.t('terminal.redirectionWritten', { mode, count: charCount, label, path: targetLabel });
             return 'valid';
         },
         writeFileContent(targetPath, rawContent, options = {}) {
             const normalizedPath = (targetPath || '').trim();
             if (!normalizedPath) {
-                return { ok: false, message: 'Redirection: aucun fichier cible indiqué.' };
+                return { ok: false, message: this.t('terminal.redirectionNoTarget') };
             }
 
             const context = this.getNodeFromPath(normalizedPath, { stopBeforeLast: true, includeFiles: true });
             if (!context || !context.node || !context.targetName) {
-                return { ok: false, message: `Redirection: chemin invalide '${normalizedPath}'.` };
+                return { ok: false, message: this.t('terminal.redirectionInvalidPath', { path: normalizedPath }) };
             }
 
             const content = typeof rawContent === 'string' ? rawContent : (rawContent ?? '').toString();
@@ -4601,15 +4494,15 @@ REMARQUES
             const newContent = appendMode ? (existingContent + content) : content;
 
             if (fileNode && fileNode.data.type === 'd') {
-                return { ok: false, message: `Redirection: '${normalizedPath}' est un dossier.` };
+                return { ok: false, message: this.t('terminal.redirectionIsDirectory', { path: normalizedPath }) };
             }
 
             if (fileNode && !this.hasPermission(fileNode, 'w')) {
-                return { ok: false, message: `Redirection: permissions insuffisantes pour '${normalizedPath}'.` };
+                return { ok: false, message: this.t('terminal.redirectionFilePermission', { path: normalizedPath }) };
             }
 
             if (!fileNode && !this.hasPermission(parentNode, ['w', 'x'])) {
-                return { ok: false, message: `Redirection: permissions insuffisantes dans '${parentNode.data.name}'.` };
+                return { ok: false, message: this.t('terminal.redirectionParentPermission', { name: parentNode.data.name }) };
             }
 
             const nextSize = this.getByteLength(newContent);
@@ -4617,7 +4510,7 @@ REMARQUES
             if (nextSize > this.maxFileSizeBytes) {
                 return {
                     ok: false,
-                    message: `Redirection: taille maximale de ${limitLabel} dépassée pour '${normalizedPath}'.`,
+                    message: this.t('terminal.redirectionSizeExceeded', { limit: limitLabel, path: normalizedPath }),
                 };
             }
 
@@ -4677,7 +4570,7 @@ REMARQUES
         removeItem(params) {//rm
             const args = Array.isArray(params) ? params : (params ? [params] : []);
             if (!args.length) {
-                this.output = 'Erreur : Aucun nom spécifié';
+                this.output = this.t('terminal.rmNoName');
                 return;
             }
 
@@ -4686,12 +4579,12 @@ REMARQUES
                 .filter((arg) => !arg.startsWith('-'))
                 .map((arg) => arg.endsWith('/') && arg.length > 1 ? arg.replace(/\/+$/, '') : (arg === '/' ? arg : arg.replace(/\/+$/, '')));
             if (!targets.length) {
-                this.output = 'Erreur : Aucun fichier ou dossier à supprimer';
+                this.output = this.t('terminal.rmNoTarget');
                 return;
             }
 
             if (!this.hasPermission(this.currentNode, ['w', 'x'])) {
-                this.output = `Permissions non accordées pour modifier le contenu de '${this.currentNode.data.name}'.`;
+                this.output = this.t('terminal.rmPermissionDenied', { name: this.currentNode.data.name });
                 return;
             }
 
@@ -4758,13 +4651,13 @@ REMARQUES
 
             if (!toDelete.length) {
                 if (blockedDirs.size && !force) {
-                    this.output = `Utilisez l'option -r pour supprimer les dossiers : ${Array.from(blockedDirs).join(', ')}`;
+                    this.output = this.t('terminal.rmUseRecursive', { items: Array.from(blockedDirs).join(', ') });
                 }
                 else if (deniedItems.size && !force) {
-                    this.output = `Permissions insuffisantes pour supprimer : ${Array.from(deniedItems).join(', ')}`;
+                    this.output = this.t('terminal.rmPermissionItems', { items: Array.from(deniedItems).join(', ') });
                 }
                 else if (!force) {
-                    this.output = `Erreur : Aucun élément correspondant à '${targets.join(', ')}'`;
+                    this.output = this.t('terminal.rmNoMatch', { items: targets.join(', ') });
                 }
                 else {
                     this.output = '';
@@ -4775,7 +4668,7 @@ REMARQUES
             const deletedList = [];
             toDelete.forEach((child) => {
                 if (interactive && typeof window !== 'undefined') {
-                    const confirmDelete = window.confirm(`Supprimer '${child.data.name}' ?`);
+                    const confirmDelete = window.confirm(this.t('terminal.confirmDelete', { name: child.data.name }));
                     if (!confirmDelete) {
                         skippedInteractive.add(child.data.name);
                         return;
@@ -4793,15 +4686,15 @@ REMARQUES
             const deletedNames = deletedList.join(', ');
             let extraInfo = '';
             if (blockedDirs.size) {
-                extraInfo += ` | Dossiers ignorés (ajoutez -r) : ${Array.from(blockedDirs).join(', ')}`;
+                extraInfo += ` | ${this.t('terminal.foldersIgnored', { items: Array.from(blockedDirs).join(', ') })}`;
             }
             if (deniedItems.size) {
-                extraInfo += ` | Accès refusé : ${Array.from(deniedItems).join(', ')}`;
+                extraInfo += ` | ${this.t('terminal.accessDenied', { items: Array.from(deniedItems).join(', ') })}`;
             }
             if (skippedInteractive.size) {
-                extraInfo += ` | Ignoré (option -i) : ${Array.from(skippedInteractive).join(', ')}`;
+                extraInfo += ` | ${this.t('terminal.ignoredInteractive', { items: Array.from(skippedInteractive).join(', ') })}`;
             }
-            const base = deletedNames ? `Élément(s) supprimé(s) : ${deletedNames}` : 'Aucun élément supprimé';
+            const base = deletedNames ? this.t('terminal.itemsDeleted', { items: deletedNames }) : this.t('terminal.noItemDeleted');
             this.output = `${base}${extraInfo}`;
             if (removedDirectoryRecursive) {
                 this.stats.removedDirectory = true;
@@ -4817,7 +4710,7 @@ REMARQUES
         handleChmod(params) {
             const args = Array.isArray(params) ? params : [params];
             if (!args.length) {
-                this.output = 'Usage: chmod [options] mode fichier';
+                this.output = this.t('terminal.chmodUsage');
                 return 'error';
             }
 
@@ -4831,7 +4724,7 @@ REMARQUES
             const rest = args.filter((arg) => !arg.startsWith('-'));
 
             if (rest.length < 2) {
-                this.output = 'Erreur : préciser les permissions et au moins un fichier';
+                this.output = this.t('terminal.chmodNeedFile');
                 return 'error';
             }
 
@@ -4843,7 +4736,7 @@ REMARQUES
             if (!isNumeric) {
                 const validSymbolic = symbolicSegments.every((segment) => /^[ugoa]*[+-=][rwx]+$/.test(segment));
                 if (!validSymbolic) {
-                    this.output = 'Erreur : Format symbolique invalide';
+                    this.output = this.t('terminal.chmodInvalidSymbolic');
                     return 'error';
                 }
             }
@@ -4884,16 +4777,16 @@ REMARQUES
 
             const messages = [];
             if (updated.length) {
-                messages.push(`Permissions mises à jour pour : ${updated.join(', ')}`);
+                messages.push(this.t('terminal.chmodUpdated', { items: updated.join(', ') }));
             }
             if (missing.length) {
-                messages.push(`Introuvable : ${missing.join(', ')}`);
+                messages.push(this.t('terminal.notFound', { items: missing.join(', ') }));
             }
             if (denied.length) {
-                messages.push(`Accès refusé : ${denied.join(', ')}`);
+                messages.push(this.t('terminal.accessDenied', { items: denied.join(', ') }));
             }
 
-            this.output = messages.join(' | ') || 'Aucune mise à jour effectuée';
+            this.output = messages.join(' | ') || this.t('terminal.noUpdate');
             if (!updated.length) {
                 return 'warning';
             }
@@ -5424,26 +5317,22 @@ REMARQUES
 
     .v-container {
         width: 97vw;
-        min-width: 1000px;
+        max-width: none;
+        min-width: 0;
         .cont-cmd-graph-navigaion{
+            gap: 12px;
+            align-items: stretch;
             .cont-cmd {
                 margin: 5px 15px;
                 border-radius: 7px;
                 padding: 5px;
                 background-color: #333;
-                width: 50%;
+                flex: 1 1 480px;
+                min-width: 320px;
                 height: 65vh;
                 position: relative;
                 overflow: hidden;
                 box-shadow: 1px 1px 5px #333;
-                .badges-actions {
-                    margin: auto;
-                    width: 97%;
-                    display: flex;
-                    justify-content: flex-end;
-                    gap: 8px;
-                    margin-bottom: 12px;
-                }
                 .v-text-field {
                     margin: auto;
                     width: 97%;
@@ -5481,10 +5370,73 @@ REMARQUES
         }
     }
 
+    .tree-panel {
+        flex: 1 1 420px;
+        min-width: 320px;
+        height: 65vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tree-legend {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        min-height: 38px;
+        padding: 6px 10px;
+        color: #173847;
+        font-size: 0.8rem;
+    }
+
+    .tree-legend__title {
+        font-weight: 700;
+        margin-right: 4px;
+    }
+
+    .tree-legend__item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .tree-legend__marker {
+        width: 14px;
+        height: 14px;
+        display: inline-block;
+        border: 2px solid #232b33;
+        background: #fff;
+    }
+
+    .tree-legend__marker--folder {
+        border-radius: 50%;
+        background: #fff;
+    }
+
+    .tree-legend__marker--file {
+        border-radius: 3px;
+        opacity: 0.7;
+    }
+
+    .tree-legend__marker--current {
+        border-radius: 50%;
+        background: orange;
+        box-shadow: inset 0 0 0 3px #fff;
+    }
+
+    .tree-legend__line {
+        width: 30px;
+        height: 0;
+        border-top: 4px dashed #5fadad;
+        display: inline-block;
+    }
+
     #tree {
         margin: auto;
-        width: 50%;
-        height: 65vh;
+        width: 100%;
+        flex: 1;
+        min-height: 0;
         svg {
             overflow: hidden;
             height: 100%;
@@ -5586,6 +5538,23 @@ REMARQUES
                 display: inline-block;
                 margin: 2px 0;
             }
+        }
+
+        .tutorial-feedback .robot-command,
+        .tutorial-description .robot-command {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Source Code Pro', monospace;
+            background: rgba(125, 226, 209, 0.18);
+            color: #00c9a7;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            display: inline-block;
+            margin: 2px 0;
+        }
+
+        .tutorial-feedback .robot-mnemonic,
+        .tutorial-description .robot-mnemonic {
+            color: #ffe38f;
         }
 
         .info-step-tutorial {
@@ -5728,10 +5697,27 @@ REMARQUES
         font-weight: 600;
     }
 
-    .badges-actions {
+    .learning-toolbar {
         display: flex;
-        justify-content: flex-end;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
         margin: 12px 0;
+    }
+
+    .learning-mode-control,
+    .learning-toolbar__actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .learning-mode-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #173847;
     }
 
     .badge-panel .badge-item {
@@ -5799,8 +5785,8 @@ REMARQUES
     .command-suggestions.global {
         // margin-bottom: 12px;
         margin: 0;
-        width: 50%;
-        height: 40px;
+        width: min(100%, 720px);
+        min-height: 40px;
         padding: 0 8px;
     }
 
@@ -5831,13 +5817,18 @@ REMARQUES
         display: flex;
         align-items: center;
         background: linear-gradient(135deg, rgba(4, 44, 60, 0.95), rgba(8, 134, 149, 0.9));
-        color: #eaffff;
+        color: #eaffff !important;
         font-size: 0.8rem;
         padding: 6px 10px;
         border-radius: 999px;
         cursor: pointer;
         box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
         user-select: none;
+    }
+
+    .command-input-hint,
+    .command-input-hint * {
+        color: #eaffff !important;
     }
 
     .command-input-hint .hint-arrow {
@@ -5869,6 +5860,82 @@ REMARQUES
         to {
             transform: translate(var(--signal-end-x, 0px), var(--signal-end-y, 0px)) scale(0.3);
             opacity: 0;
+        }
+    }
+
+    @media (max-width: 1100px) {
+        .v-container {
+            width: 100%;
+            padding-left: 10px;
+            padding-right: 10px;
+
+            .cont-cmd-graph-navigaion {
+                flex-direction: column;
+
+                .cont-cmd {
+                    width: 100%;
+                    flex-basis: auto;
+                    margin: 5px 0;
+                    height: 58vh;
+                }
+            }
+        }
+
+        .tree-panel {
+            width: 100%;
+            height: 52vh;
+            flex-basis: auto;
+        }
+
+        .learning-toolbar {
+            align-items: flex-start;
+        }
+
+        .floating-robot {
+            width: min(92vw, 550px);
+
+            .robot-tooltip {
+                max-width: calc(100vw - 110px);
+            }
+        }
+    }
+
+    @media (max-width: 680px) {
+        .session-banner {
+            padding-top: 68px;
+        }
+
+        .learning-mode-control,
+        .learning-toolbar__actions {
+            width: 100%;
+        }
+
+        .learning-mode-control :deep(.v-btn-toggle) {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .command-input-hint {
+            left: 10px;
+            right: 10px;
+            justify-content: center;
+            white-space: normal;
+            border-radius: 8px;
+        }
+
+        .floating-robot {
+            top: 54px;
+            left: 8px;
+            width: calc(100vw - 16px);
+
+            .robot-sprite {
+                width: 64px;
+            }
+
+            .robot-tooltip {
+                left: 68px;
+                font-size: 0.78rem;
+            }
         }
     }
 </style>

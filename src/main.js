@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
+import { createI18nPlugin } from './i18n'
 
 // Vuetify 3 imports
 import 'vuetify/styles' // Import des styles de Vuetify
@@ -48,5 +49,6 @@ library.add(far)
 createApp(App)
     .use(vuetify)
     .use(store)
+    .use(createI18nPlugin())
     .use(router)
     .mount('#app')

@@ -5,6 +5,7 @@
   <script>
     import { Terminal } from "xterm";
     import "xterm/css/xterm.css";
+    import { t } from "../i18n";
     
     export default {
         name: "Terminal",
@@ -13,7 +14,7 @@
             this.term.open(this.$refs.terminal);
         
             // Simuler une commande
-            this.term.writeln("Bienvenue dans le terminal Bash !");
+            this.term.writeln(t('terminal.xtermWelcome'));
             this.term.writeln("$");
         },
         destroyed() {

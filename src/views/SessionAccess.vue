@@ -5,13 +5,13 @@
                 <div class="session-access__hero">
                     <div>
                         <div class="session-access__eyebrow">linux-formation</div>
-                        <h1 class="session-access__title">Choisir un mode d'utilisation</h1>
+                        <h1 class="session-access__title">{{ t('session.heroTitle') }}</h1>
                         <p class="session-access__subtitle">
-                            Entraine-toi librement ou rejoins une session suivie par un formateur.
+                            {{ t('session.heroSubtitle') }}
                         </p>
                     </div>
                     <v-chip color="blue-grey-darken-3" variant="flat">
-                        Connexion: {{ serverBaseUrl }}
+                        {{ t('session.connection', { url: serverBaseUrl }) }}
                     </v-chip>
                 </div>
             </v-col>
@@ -20,18 +20,18 @@
         <v-row justify="center" class="mt-2">
             <v-col cols="12" md="5" lg="4">
                 <v-card class="session-card" elevation="8">
-                    <v-card-title>Utilisation libre</v-card-title>
+                    <v-card-title>{{ t('session.freeUse') }}</v-card-title>
                     <v-card-text>
                         <p class="text-body-2">
-                            Tu progresses a ton rythme, sans suivi externe.
+                            {{ t('session.freeUseDescription') }}
                         </p>
                         <div class="text-caption session-card__meta">
-                            Mode actuel: {{ currentModeLabel }}
+                            {{ t('session.currentMode', { mode: currentModeLabel }) }}
                         </div>
                     </v-card-text>
                     <v-card-actions>
                         <v-btn color="primary" block @click="startOffline">
-                            Ouvrir la plateforme
+                            {{ t('session.openPlatform') }}
                         </v-btn>
                     </v-card-actions>
                 </v-card>
@@ -39,11 +39,11 @@
 
             <v-col cols="12" md="5" lg="4">
                 <v-card class="session-card" elevation="8">
-                    <v-card-title>Rejoindre une session</v-card-title>
+                    <v-card-title>{{ t('session.joinSession') }}</v-card-title>
                     <v-card-text>
                         <v-text-field
                             v-model="sessionCode"
-                            label="Code de session"
+                            :label="t('session.sessionCode')"
                             variant="outlined"
                             maxlength="6"
                             placeholder="ABC123"
@@ -52,7 +52,7 @@
                         />
                         <v-text-field
                             v-model="firstName"
-                            label="Prenom"
+                            :label="t('session.firstName')"
                             variant="outlined"
                             maxlength="40"
                             placeholder="Alice"
@@ -62,7 +62,7 @@
                         />
                         <v-text-field
                             v-model="lastName"
-                            label="Nom"
+                            :label="t('session.lastName')"
                             variant="outlined"
                             maxlength="60"
                             placeholder="Dupont"
@@ -72,7 +72,7 @@
                         />
                         <v-text-field
                             v-model="email"
-                            label="Mail"
+                            :label="t('session.email')"
                             variant="outlined"
                             type="email"
                             maxlength="120"
@@ -96,7 +96,7 @@
                             block
                             @click="joinSession"
                         >
-                            Rejoindre
+                            {{ t('session.join') }}
                         </v-btn>
                     </v-card-actions>
                 </v-card>
@@ -111,6 +111,7 @@
     import { useRoute, useRouter } from 'vue-router';
     import { useStore } from 'vuex';
 
+    import { t } from '../i18n';
     import { getSessionServerBaseUrl, sessionClient } from '../services/sessionClient';
 
     const router = useRouter();
@@ -131,12 +132,12 @@
     const currentModeLabel = computed(() => {
         const mode = store.state.sessionContext?.mode || 'offline';
         if (mode === 'participant') {
-            return 'session en cours';
+            return t('session.currentModeParticipant');
         }
         if (mode === 'admin') {
-            return 'administration';
+            return t('session.currentModeAdmin');
         }
-        return 'utilisation libre';
+        return t('session.currentModeOffline');
     });
 
     const startOffline = () => {
@@ -157,19 +158,19 @@
             };
 
             if (!code) {
-                throw new Error('Le code de session est requis.');
+                throw new Error(t('session.codeRequired'));
             }
             if (!participant.firstName) {
-                throw new Error('Le prenom est requis.');
+                throw new Error(t('session.firstNameRequired'));
             }
             if (!participant.lastName) {
-                throw new Error('Le nom est requis.');
+                throw new Error(t('session.lastNameRequired'));
             }
             if (!participant.email) {
-                throw new Error('Le mail est requis.');
+                throw new Error(t('session.emailRequired'));
             }
             if (!emailPattern.test(participant.email)) {
-                throw new Error('Le format du mail est invalide.');
+                throw new Error(t('session.emailInvalid'));
             }
 
             const result = await sessionClient.joinSession(code, participant);
@@ -189,7 +190,7 @@
 
             router.push({ name: 'home' });
         } catch (error) {
-            joinError.value = error?.message || 'Impossible de rejoindre la session.';
+            joinError.value = error?.message || t('session.joinFailed');
         } finally {
             joinLoading.value = false;
         }

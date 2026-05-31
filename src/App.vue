@@ -65,13 +65,13 @@
     }
 
     .language-switcher {
-        position: fixed;
-        top: 12px;
-        right: 14px;
-        z-index: 1200;
+        position: relative;
+        z-index: 20;
         display: flex;
         align-items: center;
         gap: 8px;
+        width: fit-content;
+        margin: 12px 14px 0 auto;
         padding: 6px 8px;
         border-radius: 8px;
         background: rgba(255, 255, 255, 0.9);
@@ -101,6 +101,16 @@
     .app-footer a {
         color: #33333399;
         text-decoration: underline;
+    }
+
+    @media (max-width: 680px) {
+        .language-switcher {
+            margin-right: 10px;
+        }
+
+        .language-switcher__label {
+            display: none;
+        }
     }
 
     .logo {

@@ -94,6 +94,7 @@
                           <br> - <span class="font-weight-medium">{{ t('navigation.missionExploration') }}</span> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>ls|cd</code></v-chip>
                           <br> - <span class="font-weight-medium">{{ t('navigation.missionCleanup') }}</span> <strong>archives</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>rm</code></v-chip>
                           <br> - <span class="font-weight-medium">{{ t('navigation.missionRestoration') }}</span> <strong>mission/briefing.txt</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>touch</code></v-chip>
+                          <br> - <span class="font-weight-medium">{{ t('navigation.missionBackup') }}</span> <strong>backups</strong> <v-chip label size="x-small" color="blue" style="margin: 0;"><code>cp</code></v-chip>
                     </p>
                     <br>
                     <p class="text-body-2" v-html="t('navigation.missionQuestion')"></p>
@@ -1116,7 +1117,7 @@
             robotDialoguePool: tm('navigationData.robotDialogues') || [],
             robotCommandKeywords: [
                 'help', 'pwd', 'ls', 'cd', 'mkdir', 'touch',
-                'rm', 'chmod', 'cat', 'head', 'tail', 'nano', 'echo'
+                'cp', 'rm', 'chmod', 'cat', 'head', 'tail', 'nano', 'echo'
             ],
         robotDialogueIconPool: [
             'mdi-robot-excited',
@@ -2077,6 +2078,25 @@
                     break;
             }
         },
+        getCommonPrefix(values = []) {
+            const normalized = values.filter((value) => typeof value === 'string' && value.length > 0);
+            if (!normalized.length) {
+                return '';
+            }
+
+            let prefix = normalized[0];
+            for (const value of normalized.slice(1)) {
+                let index = 0;
+                while (index < prefix.length && index < value.length && prefix[index] === value[index]) {
+                    index += 1;
+                }
+                prefix = prefix.slice(0, index);
+                if (!prefix) {
+                    break;
+                }
+            }
+            return prefix;
+        },
         autoCompleteCommand() {
             if (this.learningMode === 'evaluation') {
                 return;
@@ -2093,6 +2113,11 @@
                     this.command = matches[0] + ' ';
                 } 
                 else if (matches.length > 1) {
+                    const commonPrefix = this.getCommonPrefix(matches);
+                    if (commonPrefix.length > cmd.length) {
+                        this.command = commonPrefix;
+                        return;
+                    }
                     this.output = this.t('terminal.suggestions', { items: matches.join(', ') });
 
                     const tooltip = this.buildCommandTooltip('', 'info', this.output);
@@ -2153,6 +2178,13 @@
                 } 
                 else if (matches.length > 1) {
                     const suggestions = matches.map(match => match.data.name);
+                    const commonPrefix = this.getCommonPrefix(suggestions);
+                    if (commonPrefix.length > context.partial.length) {
+                        const completion = `${context.basePrefix}${commonPrefix}`;
+                        const newArgs = args.slice(0, -1).concat(completion);
+                        this.command = newArgs.join(' ');
+                        return;
+                    }
                     this.output = this.t('terminal.suggestions', { items: suggestions.join(', ') });
                     
                     const tooltip = this.buildCommandTooltip('', 'info', this.output);
@@ -2194,7 +2226,7 @@
             this.tutorial.feedback = '';
             this.tutorial.feedbackType = '';
         },
-        finishTutorial() {
+        finishTutorial(completion = {}) {
             this.tutorial.completed = true;
             this.tutorial.active = false;
             this.tutorial.feedback = this.t('terminal.tutorialFinished');
@@ -2205,14 +2237,20 @@
             this.queueTelemetryEvent('tutorial_completed', {
                 totalSteps: this.tutorial.steps.length,
                 currentStep: this.tutorial.currentStep,
-                path: this.getSessionPath(),
+                completedStepId: completion.completedStepId || this.tutorial.steps[this.tutorial.currentStep - 1]?.id || null,
+                completedByCommand: completion.command || '',
+                completedCommandName: completion.commandName || '',
+                completedCommandIndex: Number.isInteger(completion.commandIndex)
+                    ? completion.commandIndex
+                    : this.commandHistory.filter((item) => item.command).length,
+                path: completion.path || this.getSessionPath(),
             }, { immediate: true });
             this.announceRobot(this.t('terminal.tutorialFinishedRobot'), {
                 duration: 4500,
                 mood: 'success',
             });
         },
-        handleTutorialProgress(cmd, params, commandState = '') {
+        handleTutorialProgress(cmd, params, commandState = '', issuedCommand = '') {
             if (!this.tutorial.active || this.tutorial.showIntro || this.tutorial.completed) {
                 return;
             }
@@ -2232,6 +2270,10 @@
             const archivesNode = this.root ? this.getNodeFromPath('/home/user/documents/archives') : null;
             const missionNode = this.root ? this.getNodeFromPath('/home/user/documents/mission') : null;
             const briefingNode = this.root ? this.getNodeFromPath('/home/user/documents/mission/briefing.txt') : null;
+            const briefingCopyNode = this.root ? this.getNodeFromPath('/home/user/documents/mission/briefing.copy.txt') : null;
+            const backupsNode = this.root ? this.getNodeFromPath('/home/user/documents/mission/backups') : null;
+            const backupBriefingNode = this.root ? this.getNodeFromPath('/home/user/documents/mission/backups/briefing.copy.txt') : null;
+            const commandIndex = this.commandHistory.filter((item) => item.command).length + 1;
             let success = false;
 
             switch (step.id) {
@@ -2277,6 +2319,32 @@
                 case 'touch-briefing':
                     success = !!briefingNode;
                     break;
+                case 'cp-briefing-copy':
+                    success = normalizedCmd === 'cp' && !!briefingCopyNode;
+                    break;
+                case 'mkdir-backups':
+                    success = normalizedCmd === 'mkdir' && !!backupsNode;
+                    break;
+                case 'cp-backup-file':
+                    success = normalizedCmd === 'cp' && !!backupBriefingNode;
+                    break;
+                case 'cd-backups':
+                    success = normalizedCmd === 'cd' && currentPath.endsWith('/home/user/documents/mission/backups');
+                    break;
+                case 'ls-backups':
+                    success = normalizedCmd === 'ls'
+                        && currentPath.endsWith('/home/user/documents/mission/backups')
+                        && !!backupBriefingNode;
+                    break;
+                case 'cd-mission-final':
+                    success = normalizedCmd === 'cd' && currentPath.endsWith('/home/user/documents/mission');
+                    break;
+                case 'rm-working-copy':
+                    success = normalizedCmd === 'rm' && !briefingCopyNode && !!backupBriefingNode;
+                    break;
+                case 'pwd-final':
+                    success = normalizedCmd === 'pwd' && currentPath.endsWith('/home/user/documents/mission');
+                    break;
                 default:
                     success = false;
             }
@@ -2315,7 +2383,13 @@
                 }
                 this.playSoundEffect('success');
                 if (this.tutorial.currentStep >= this.tutorial.steps.length) {
-                    this.finishTutorial();
+                    this.finishTutorial({
+                        command: issuedCommand,
+                        commandName: normalizedCmd,
+                        commandIndex,
+                        completedStepId: step.id,
+                        path: currentPath,
+                    });
                 }
             } else {
                 if (!normalizedCmd) {
@@ -2330,6 +2404,9 @@
                     archivesExists: !!archivesNode,
                     missionExists: !!missionNode,
                     briefingExists: !!briefingNode,
+                    briefingCopyExists: !!briefingCopyNode,
+                    backupsExists: !!backupsNode,
+                    backupBriefingExists: !!backupBriefingNode,
                 });
                 this.tutorial.feedback = this.showDetailedTutorialFeedback
                     ? (errorMessage || this.t('terminal.tutorialCommandNoMatch'))
@@ -2357,6 +2434,9 @@
                 archivesExists,
                 missionExists,
                 briefingExists,
+                briefingCopyExists,
+                backupsExists,
+                backupBriefingExists,
             } = context;
             const lowerParams = paramsList.map((param) => param.toLowerCase());
             const mentions = (term) =>
@@ -2489,6 +2569,76 @@
                         return this.t('terminal.tutorialErrors.touchBriefingMissing');
                     }
                     break;
+                case 'cp-briefing-copy':
+                    if (normalizedCmd !== 'cp') {
+                        return this.t('terminal.tutorialErrors.cpBriefingNotCp');
+                    }
+                    if (!mentions('briefing')) {
+                        return this.t('terminal.tutorialErrors.cpBriefingNeedsSource');
+                    }
+                    if (!briefingCopyExists) {
+                        return this.t('terminal.tutorialErrors.cpBriefingMissing');
+                    }
+                    break;
+                case 'mkdir-backups':
+                    if (normalizedCmd !== 'mkdir') {
+                        return this.t('terminal.tutorialErrors.mkdirBackupsNotMkdir');
+                    }
+                    if (!mentions('backups')) {
+                        return this.t('terminal.tutorialErrors.mkdirBackupsTarget');
+                    }
+                    if (!backupsExists) {
+                        return this.t('terminal.tutorialErrors.mkdirBackupsMissing');
+                    }
+                    break;
+                case 'cp-backup-file':
+                    if (normalizedCmd !== 'cp') {
+                        return this.t('terminal.tutorialErrors.cpBackupNotCp');
+                    }
+                    if (!backupsExists) {
+                        return this.t('terminal.tutorialErrors.cpBackupNeedsFolder');
+                    }
+                    if (!backupBriefingExists) {
+                        return this.t('terminal.tutorialErrors.cpBackupMissing');
+                    }
+                    break;
+                case 'cd-backups':
+                    if (normalizedCmd !== 'cd') {
+                        return this.t('terminal.tutorialErrors.cdBackupsNotCd');
+                    }
+                    if (!mentions('backups')) {
+                        return this.t('terminal.tutorialErrors.cdBackupsTarget');
+                    }
+                    return this.t('terminal.tutorialErrors.cdBackupsWrongPath', { path: currentPath || '/' });
+                case 'ls-backups':
+                    if (normalizedCmd !== 'ls') {
+                        return this.t('terminal.tutorialErrors.lsBackupsNotLs');
+                    }
+                    if (!currentPath.endsWith('/home/user/documents/mission/backups')) {
+                        return this.t('terminal.tutorialErrors.lsBackupsWrongPath');
+                    }
+                    return this.t('terminal.tutorialErrors.lsBackupsExpected');
+                case 'cd-mission-final':
+                    if (normalizedCmd !== 'cd') {
+                        return this.t('terminal.tutorialErrors.cdMissionFinalNotCd');
+                    }
+                    return this.t('terminal.tutorialErrors.cdMissionFinalWrongPath', { path: currentPath || '/' });
+                case 'rm-working-copy':
+                    if (normalizedCmd !== 'rm') {
+                        return this.t('terminal.tutorialErrors.rmWorkingCopyNotRm');
+                    }
+                    if (!mentions('briefing.copy')) {
+                        return this.t('terminal.tutorialErrors.rmWorkingCopyTarget');
+                    }
+                    if (briefingCopyExists) {
+                        return this.t('terminal.tutorialErrors.rmWorkingCopyStillExists');
+                    }
+                    break;
+                case 'pwd-final':
+                    if (normalizedCmd !== 'pwd') {
+                        return this.t('terminal.tutorialErrors.pwdFinalNotPwd');
+                    }
+                    return this.t('terminal.tutorialErrors.pwdFinalWrongPath', { path: currentPath || '/' });
                 default:
                     break;
             }
@@ -2856,6 +3006,9 @@
                 case 'touch':
                     this.createFile(param);
                     break;
+                case 'cp':
+                    state = this.copyItem(param);
+                    break;
                 case 'rm':
                     this.removeItem(param);
                     break;
@@ -2886,7 +3039,7 @@
                 }
             }
 
-            this.handleTutorialProgress(cmd, param, state);
+                this.handleTutorialProgress(cmd, param, state, issuedCommand);
 
             this.pushCommandToHistory(issuedCommand, state, this.output);
             this.command = '';
@@ -2921,6 +3074,7 @@
                 state,
                 currentStep: this.tutorial.currentStep,
                 currentStepId: this.currentTutorialStep?.id || null,
+                tutorialCompleted: this.tutorial.completed,
                 path: this.getSessionPath(),
             }, { immediate: true });
             setTimeout(() => {
@@ -4184,6 +4338,151 @@
             }
 
             this.output = errors.join(' | ') || this.t('terminal.noFileProcessed');
+        },
+        copyItem(params = []) {
+            const args = Array.isArray(params) ? params : (params ? [params] : []);
+            const options = args.filter((arg) => arg.startsWith('-'));
+            const paths = args.filter((arg) => !arg.startsWith('-'));
+            const recursive = options.some((option) => option.includes('r') || option.includes('R'));
+
+            if (paths.length < 2) {
+                this.output = this.t('terminal.cpNeedSourceTarget');
+                return 'warning';
+            }
+            if (paths.length > 2) {
+                this.output = this.t('terminal.cpOnlyOneSource');
+                return 'warning';
+            }
+
+            const [sourcePath, rawTargetPath] = paths;
+            const sourceInfo = this.getNodeFromPath(sourcePath, { includeFiles: true });
+            const sourceNode = sourceInfo?.node;
+
+            if (!sourceNode) {
+                this.output = this.t('terminal.cpSourceNotFound', { path: sourcePath });
+                return 'warning';
+            }
+            if (sourceNode.data.type === 'd' && !recursive) {
+                this.output = this.t('terminal.cpRecursiveRequired', { path: sourcePath });
+                return 'warning';
+            }
+            if (!this.canReadCopySource(sourceNode)) {
+                this.output = this.t('terminal.cpSourcePermission', { path: sourcePath });
+                return 'warning';
+            }
+
+            const target = this.resolveCopyTarget(sourceNode, rawTargetPath);
+            if (!target.ok) {
+                this.output = target.message;
+                return 'warning';
+            }
+
+            if (!this.hasPermission(target.parent, ['w', 'x'])) {
+                this.output = this.t('terminal.cpParentPermission', { name: target.parent.data.name });
+                return 'warning';
+            }
+
+            const existingChild = this.getChildNode(target.parent, target.name);
+            if (existingChild && sourceNode.data.type === 'd') {
+                this.output = this.t('terminal.cpDestinationExists', { path: rawTargetPath });
+                return 'warning';
+            }
+            if (existingChild && existingChild.data.type === 'd') {
+                this.output = this.t('terminal.cpDestinationIsDirectory', { path: rawTargetPath });
+                return 'warning';
+            }
+            if (existingChild && !this.hasPermission(existingChild, 'w')) {
+                this.output = this.t('terminal.cpDestinationPermission', { path: rawTargetPath });
+                return 'warning';
+            }
+
+            if (existingChild) {
+                existingChild.data.content = sourceNode.data.content || '';
+                existingChild.data.date = this.getFormattedDate();
+            } else {
+                this.cloneNodeForCopy(sourceNode, target.parent, target.name);
+            }
+
+            this.preserveCurrentPath();
+            this.createTree({ preserveSelection: true });
+            this.emitTreeSignal();
+            this.output = this.t('terminal.cpCopied', { source: sourcePath, target: rawTargetPath });
+            if (sourceNode.data.type === 'd') {
+                this.stats.createdDirectory = true;
+            } else {
+                this.stats.createdFile = true;
+            }
+            this.checkBadges();
+            return 'valid';
+        },
+        canReadCopySource(node) {
+            if (!node) {
+                return false;
+            }
+            if (node.data.type === 'f') {
+                return this.hasPermission(node, 'r');
+            }
+            if (!this.hasPermission(node, ['r', 'x'])) {
+                return false;
+            }
+            const children = node.children || node._children || [];
+            return children.every((child) => this.canReadCopySource(child));
+        },
+        resolveCopyTarget(sourceNode, rawTargetPath) {
+            const targetPath = (rawTargetPath || '').trim();
+            if (!targetPath) {
+                return { ok: false, message: this.t('terminal.cpNeedSourceTarget') };
+            }
+
+            const wantsDirectory = targetPath.endsWith('/');
+            const normalizedTargetPath = wantsDirectory && targetPath.length > 1
+                ? targetPath.replace(/\/+$/, '')
+                : targetPath;
+            const existingTarget = this.getNodeFromPath(normalizedTargetPath, { includeFiles: true })?.node;
+
+            if (wantsDirectory && (!existingTarget || existingTarget.data.type !== 'd')) {
+                return { ok: false, message: this.t('terminal.cpTargetDirectoryMissing', { path: rawTargetPath }) };
+            }
+
+            if (existingTarget?.data.type === 'd') {
+                return {
+                    ok: true,
+                    parent: existingTarget,
+                    name: sourceNode.data.name,
+                };
+            }
+
+            const parentInfo = this.getNodeFromPath(normalizedTargetPath, { stopBeforeLast: true, includeFiles: true });
+            if (!parentInfo || !parentInfo.node || !parentInfo.targetName) {
+                return { ok: false, message: this.t('terminal.cpInvalidTarget', { path: rawTargetPath }) };
+            }
+            if (parentInfo.node.data.type !== 'd') {
+                return { ok: false, message: this.t('terminal.cpInvalidTarget', { path: rawTargetPath }) };
+            }
+
+            return {
+                ok: true,
+                parent: parentInfo.node,
+                name: parentInfo.targetName,
+            };
+        },
+        cloneNodeForCopy(sourceNode, targetParent, targetName) {
+            if (sourceNode.data.type === 'd') {
+                const copiedDirectory = this.createDirectoryNode(targetParent, targetName);
+                copiedDirectory.data.rights = sourceNode.data.rights;
+                copiedDirectory.data.hidden = targetName.startsWith('.');
+                const sourceChildren = sourceNode.children || sourceNode._children || [];
+                sourceChildren.forEach((child) => {
+                    this.cloneNodeForCopy(child, copiedDirectory, child.data.name);
+                });
+                return copiedDirectory;
+            }
+
+            const copiedFile = this.createFileNode(targetParent, targetName);
+            copiedFile.data.rights = sourceNode.data.rights;
+            copiedFile.data.hidden = targetName.startsWith('.');
+            copiedFile.data.content = sourceNode.data.content || '';
+            return copiedFile;
         },
         catCommand(params = []) {
             const args = Array.isArray(params)

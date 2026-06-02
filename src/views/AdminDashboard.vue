@@ -277,6 +277,12 @@
                                         <div class="text-caption">
                                             {{ participant.completed ? t('admin.tutorialCompleted') : t('admin.inProgress') }}
                                         </div>
+                                        <div
+                                            v-if="participant.completedAtCommand"
+                                            class="text-caption text-medium-emphasis"
+                                        >
+                                            {{ t('admin.completedAtCommand', { command: participant.completedAtCommand, index: participant.completedAtCommandIndex || '-' }) }}
+                                        </div>
                                     </td>
                                     <td>{{ participant.commandsCount }}</td>
                                     <td>{{ participant.errorsCount }}</td>

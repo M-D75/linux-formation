@@ -110,6 +110,7 @@ export const messages = {
       lastActivity: 'Dernière activité',
       emailMissing: 'Mail non renseigné',
       tutorialCompleted: 'Tutoriel terminé',
+      completedAtCommand: 'Terminé à la commande #{index} : {command}',
       inProgress: 'En cours',
       noParticipants: 'Aucun participant pour le moment.',
       commandRate: 'Rythme des commandes',
@@ -168,11 +169,12 @@ export const messages = {
       missionTitle: 'Briefing de mission',
       missionIntro1: "👋 Padawan du Shell, te voilà enfin !<br>L'ordinateur d'entraînement a dormi 17 cycles... mais ta venue l'a réveillé.<br><br>J'ai besoin d'un pilote. D'un vrai.<br>D'un humain qui sait taper plus vite que son ombre.",
       missionObjectiveLabel: 'Objectif',
-      missionObjectiveIntro: 'Explorer un vieux système Linux abandonné et réactiver 5 modules sacrés :',
+      missionObjectiveIntro: 'Explorer un vieux système Linux abandonné et réactiver 6 modules sacrés :',
       missionObservation: "Observation : Te situer dans l'arborescence",
       missionExploration: 'Exploration | Déplacement : Explorer les environs',
       missionCleanup: "Nettoyage : Nettoyer l'antique dossier",
       missionRestoration: "Restauration : Monter l'opération",
+      missionBackup: 'Sauvegarde : Dupliquer les fichiers utiles',
       missionQuestion: '🤔 Tu veux un copilote baptisé <span class="font-weight-bold">"Tutoriel"</span> ou tu fonces en solo ?',
       skip: 'Passer',
       startTutorial: 'Lancer le tutoriel',
@@ -182,7 +184,7 @@ export const messages = {
       badgesToggle: '{action} les badges ({earned}/{total})',
       helpTooltip: "Besoin d'aide ? Clique pour lancer help dans le terminal.",
       noCommandMatchTooltip: 'Analyse : aucune commande connue ne correspond à ces caractères.',
-      commandLabel: 'Entrez une commande (help, cd, ls, mkdir, touch, chmod...)',
+      commandLabel: 'Entrez une commande (help, cd, ls, mkdir, touch, cp, chmod...)',
       commandPlaceholder: 'Par exemple : cd documents',
       firstCommandHint: 'Entrez votre première commande en cliquant ici',
       skipTutorial: 'Passer le tutoriel',
@@ -297,8 +299,64 @@ export const messages = {
           id: 'touch-briefing',
           title: '12. Créer le briefing',
           description: 'Crée un fichier `briefing.txt` (ex: `touch briefing.txt`) dans <strong>mission</strong>.',
-          success: 'Briefing.txt est en place, mission accomplie !',
+          success: 'Briefing.txt est en place.',
           concept: '`touch` crée un fichier vide ou met à jour sa date si le fichier existe déjà.'
+        },
+        {
+          id: 'cp-briefing-copy',
+          title: '13. Dupliquer un fichier',
+          description: 'Utilise `cp briefing.txt briefing.copy.txt` pour créer une copie de travail.',
+          success: 'Copie de travail créée.',
+          concept: '`cp` copie une source vers une destination sans supprimer l’original.'
+        },
+        {
+          id: 'mkdir-backups',
+          title: '14. Préparer une sauvegarde',
+          description: 'Prépare maintenant un dossier <strong>backups</strong> dans le dossier courant.',
+          success: 'Dossier de sauvegarde prêt.',
+          concept: 'Un bon scénario shell enchaîne observation, création, copie et vérification.'
+        },
+        {
+          id: 'cp-backup-file',
+          title: '15. Sauvegarder la copie',
+          description: 'Copie `briefing.copy.txt` dans <strong>backups</strong> en conservant l’original dans <strong>mission</strong>.',
+          success: 'La sauvegarde est rangée dans backups.',
+          concept: '`cp source dossier/` garde le même nom de fichier dans le dossier cible.'
+        },
+        {
+          id: 'cd-backups',
+          title: '16. Contrôler la sauvegarde',
+          description: 'Entre dans le dossier <strong>backups</strong>.',
+          success: 'Tu es dans backups.',
+          concept: 'Quand un objectif ne donne plus la commande exacte, déduis l’action depuis le verbe.'
+        },
+        {
+          id: 'ls-backups',
+          title: '17. Inspecter sans assistance',
+          description: 'Vérifie que la copie attendue est bien présente ici.',
+          success: 'Sauvegarde confirmée.',
+          concept: '`ls` reste le réflexe de contrôle après une opération.'
+        },
+        {
+          id: 'cd-mission-final',
+          title: '18. Revenir au poste de mission',
+          description: 'Reviens dans le dossier parent <strong>mission</strong>.',
+          success: 'Retour dans mission.',
+          concept: '`cd ..` permet de sortir proprement d’un sous-dossier.'
+        },
+        {
+          id: 'rm-working-copy',
+          title: '19. Nettoyer le brouillon',
+          description: 'Supprime seulement la copie de travail restée dans <strong>mission</strong>.',
+          success: 'Brouillon supprimé, sauvegarde conservée.',
+          concept: '`rm` doit être ciblé précisément : on supprime le temporaire, pas la sauvegarde.'
+        },
+        {
+          id: 'pwd-final',
+          title: '20. Dernière vérification',
+          description: 'Affiche ta position actuelle pour clôturer la mission.',
+          success: 'Position confirmée, mission accomplie !',
+          concept: '`pwd` termine bien un scénario : tu sais exactement où tu as fini.'
         },
       ],
       commandDescriptions: {
@@ -312,6 +370,7 @@ export const messages = {
         ll: 'Alias de ls -l : liste détaillée des fichiers.',
         mkdir: 'Crée un nouveau dossier.',
         touch: 'Crée ou met à jour un fichier.',
+        cp: 'Copie un fichier ou un dossier.',
         rm: 'Supprime un fichier ou un dossier.',
         chmod: "Modifie les permissions d'un fichier ou dossier.",
         cat: "Affiche le contenu d'un fichier (supporte la redirection).",
@@ -425,6 +484,18 @@ export const messages = {
       filesCreated: 'Fichier(s) créé(s) : {items}',
       timestampUpdated: 'Horodatage mis à jour : {items}',
       noFileProcessed: 'Aucun fichier traité',
+      cpNeedSourceTarget: 'cp: indique une source et une destination.',
+      cpOnlyOneSource: 'cp: cette simulation accepte une seule source à la fois.',
+      cpSourceNotFound: "cp: impossible de trouver '{path}'",
+      cpRecursiveRequired: "cp: '{path}' est un dossier. Ajoute l'option -r pour le copier.",
+      cpSourcePermission: "cp: permissions insuffisantes pour lire '{path}'",
+      cpInvalidTarget: "cp: destination invalide '{path}'",
+      cpTargetDirectoryMissing: "cp: le dossier cible '{path}' n'existe pas",
+      cpParentPermission: "cp: permissions insuffisantes dans '{name}'",
+      cpDestinationExists: "cp: la destination '{path}' existe déjà",
+      cpDestinationIsDirectory: "cp: la destination '{path}' est un dossier",
+      cpDestinationPermission: "cp: permissions insuffisantes pour écrire dans '{path}'",
+      cpCopied: "Copie effectuée : '{source}' -> '{target}'",
       catNeedFile: 'cat: indique au moins un fichier.',
       fileNotFound: '{command}: {path}: fichier introuvable',
       permissionDenied: '{command}: {path}: permission refusée',
@@ -497,6 +568,14 @@ export const messages = {
         'mkdir-mission': '[strong]Astuce mémo[/strong] : `mkdir` signifie **Make Directory**, pour créer un dossier.',
         'ls-mission-check': '[strong]Astuce mémo[/strong] : un `ls` après `mkdir` te confirme instantanément que le dossier existe.',
         'touch-briefing': '[strong]Astuce mémo[/strong] : `touch` crée ou met à jour un fichier en une commande.',
+        'cp-briefing-copy': '[strong]Astuce mémo[/strong] : `cp` signifie **Copy**, pour dupliquer fichier ou dossier.',
+        'mkdir-backups': '[strong]Astuce mémo[/strong] : `mkdir` prépare l’espace avant de ranger une sauvegarde.',
+        'cp-backup-file': '[strong]Astuce mémo[/strong] : `cp fichier dossier/` copie dans le dossier en gardant le nom.',
+        'cd-backups': '[strong]Astuce mémo[/strong] : `cd` sert aussi à contrôler le résultat dans le dossier cible.',
+        'ls-backups': '[strong]Astuce mémo[/strong] : `ls` valide visuellement une opération.',
+        'cd-mission-final': '[strong]Astuce mémo[/strong] : `cd ..` revient au dossier parent.',
+        'rm-working-copy': '[strong]Astuce mémo[/strong] : `rm` supprime une cible précise, pas “ce qui ressemble”.',
+        'pwd-final': '[strong]Astuce mémo[/strong] : `pwd` ferme la boucle en confirmant ta position.',
       },
       tutorialIntroHint: 'Bienvenue dans le cockpit ! Clique sur le champ de saisie pour prendre les commandes.',
       tutorialHelpHint: 'Tu es maintenant aux commandes. Besoin d’un coup de pouce ? Tape simplement `help`. Puis valide avec Entrée. ↵',
@@ -541,6 +620,28 @@ export const messages = {
         touchBriefingWrongTarget: "Le fichier attendu est 'briefing.txt', pas '{target}'.",
         touchBriefingNoMission: "Crée d'abord le dossier `mission` puis exécute `touch briefing.txt` depuis ce dossier.",
         touchBriefingMissing: "Le fichier n'a pas été trouvé dans `mission`. Lance `touch briefing.txt` à cet emplacement.",
+        cpBriefingNotCp: 'Duplique le briefing avec la commande `cp`.',
+        cpBriefingNeedsSource: 'La source attendue est `briefing.txt` et la copie doit s’appeler `briefing.copy.txt`.',
+        cpBriefingMissing: 'Je ne vois pas encore `briefing.copy.txt` dans mission.',
+        mkdirBackupsNotMkdir: 'Prépare le dossier de sauvegarde avec `mkdir`.',
+        mkdirBackupsTarget: 'Le dossier attendu s’appelle `backups`.',
+        mkdirBackupsMissing: 'Je ne vois pas encore le dossier `backups` dans mission.',
+        cpBackupNotCp: 'Range la copie dans backups avec `cp`.',
+        cpBackupNeedsFolder: 'Crée d’abord le dossier `backups`.',
+        cpBackupMissing: 'La copie sauvegardée doit se trouver dans `backups`.',
+        cdBackupsNotCd: 'Entre dans `backups` avec `cd`.',
+        cdBackupsTarget: 'Le dossier cible est `backups`.',
+        cdBackupsWrongPath: 'Tu es sur {path}. On t’attend dans /home/user/documents/mission/backups.',
+        lsBackupsNotLs: 'Inspecte la sauvegarde avec `ls`.',
+        lsBackupsWrongPath: 'Place-toi dans /home/user/documents/mission/backups avant de vérifier.',
+        lsBackupsExpected: 'Affiche le contenu de backups pour confirmer la copie.',
+        cdMissionFinalNotCd: 'Reviens dans le dossier parent avec `cd`.',
+        cdMissionFinalWrongPath: 'Tu es sur {path}. Reviens dans /home/user/documents/mission.',
+        rmWorkingCopyNotRm: 'Nettoie la copie de travail avec `rm`.',
+        rmWorkingCopyTarget: 'La cible à supprimer est `briefing.copy.txt` dans mission.',
+        rmWorkingCopyStillExists: '`briefing.copy.txt` existe encore dans mission.',
+        pwdFinalNotPwd: 'Termine avec `pwd` pour afficher ta position.',
+        pwdFinalWrongPath: 'Tu es sur {path}. Reviens dans mission avant de clôturer.',
       },
       manuals: {
         man: `
@@ -664,6 +765,22 @@ OPTIONS
 REMARQUES
     Crée les fichiers inexistants dans le répertoire cible si les droits w+x sont présents.
 `,
+        cp: `
+CP(1)                              Commandes Shell                              CP(1)
+
+NOM
+    cp - copie un fichier ou un dossier.
+
+SYNOPSIS
+    cp [-r] source destination
+
+OPTIONS
+    -r  copie récursivement un dossier et son contenu
+
+REMARQUES
+    La destination peut être un nouveau nom de fichier ou un dossier existant.
+    Les dossiers nécessitent l'option -r.
+`,
         cat: `
 CAT(1)                             Commandes Shell                             CAT(1)
 
@@ -773,6 +890,7 @@ REMARQUES
                     - ll : Alias de ls -l : liste détaillée des fichiers
                     - mkdir : Crée un nouveau dossier
                     - touch : Crée un nouveau fichier
+                    - cp : Copie un fichier ou un dossier
                     - rm : Supprime un fichier ou un dossier
                     - chmod : Change les permissions d'un fichier ou d'un dossier
                     - cat : Lit et affiche le contenu d'un fichier (peut être redirigé avec > ou >>)
@@ -786,6 +904,7 @@ REMARQUES
         ls: 'Usage : ls [-h] [-a] [-l]\nListe les fichiers et dossiers.',
         mkdir: 'Usage : mkdir [-h] [dossier]\nCrée un nouveau dossier.',
         touch: 'Usage : touch [-h] [fichier]\nCrée un nouveau fichier.',
+        cp: 'Usage : cp [-h] [-r] source destination\nCopie un fichier ou un dossier.',
         rm: 'Usage : rm [-h] [-r] [fichier|dossier]\nSupprime un fichier ou un dossier.',
         chmod: "Usage : chmod [-h] [permissions] [fichier|dossier]\nChange les permissions d'un fichier ou d'un dossier.",
         cat: "Usage : cat [-h] fichier...\nAffiche le contenu d'un ou plusieurs fichiers.",
@@ -884,6 +1003,7 @@ REMARQUES
       lastActivity: 'Last activity',
       emailMissing: 'Email not provided',
       tutorialCompleted: 'Tutorial completed',
+      completedAtCommand: 'Completed at command #{index}: {command}',
       inProgress: 'In progress',
       noParticipants: 'No participants yet.',
       commandRate: 'Command rate',
@@ -942,11 +1062,12 @@ REMARQUES
       missionTitle: 'Mission briefing',
       missionIntro1: "👋 Shell Padawan, here you are at last!<br>The training computer slept for 17 cycles... but your arrival woke it up.<br><br>I need a pilot. A real one.<br>A human who can type faster than their shadow.",
       missionObjectiveLabel: 'Objective',
-      missionObjectiveIntro: 'Explore an old abandoned Linux system and reactivate 5 sacred modules:',
+      missionObjectiveIntro: 'Explore an old abandoned Linux system and reactivate 6 sacred modules:',
       missionObservation: 'Observation: Locate yourself in the file tree',
       missionExploration: 'Exploration | Movement: Explore the surroundings',
       missionCleanup: 'Cleanup: Clean the ancient folder',
       missionRestoration: 'Restoration: Set up the operation',
+      missionBackup: 'Backup: Duplicate useful files',
       missionQuestion: '🤔 Do you want a copilot named <span class="font-weight-bold">"Tutorial"</span>, or are you going solo?',
       skip: 'Skip',
       startTutorial: 'Start tutorial',
@@ -956,7 +1077,7 @@ REMARQUES
       badgesToggle: '{action} badges ({earned}/{total})',
       helpTooltip: 'Need help? Click to run help in the terminal.',
       noCommandMatchTooltip: 'Analysis: no known command matches these characters.',
-      commandLabel: 'Enter a command (help, cd, ls, mkdir, touch, chmod...)',
+      commandLabel: 'Enter a command (help, cd, ls, mkdir, touch, cp, chmod...)',
       commandPlaceholder: 'For example: cd documents',
       firstCommandHint: 'Enter your first command by clicking here',
       skipTutorial: 'Skip tutorial',
@@ -1071,8 +1192,64 @@ REMARQUES
           id: 'touch-briefing',
           title: '12. Create the briefing',
           description: 'Create a `briefing.txt` file (for example `touch briefing.txt`) inside <strong>mission</strong>.',
-          success: 'Briefing.txt is in place, mission complete!',
+          success: 'Briefing.txt is in place.',
           concept: '`touch` creates an empty file or updates its date if the file already exists.'
+        },
+        {
+          id: 'cp-briefing-copy',
+          title: '13. Duplicate a file',
+          description: 'Use `cp briefing.txt briefing.copy.txt` to create a working copy.',
+          success: 'Working copy created.',
+          concept: '`cp` copies a source to a destination without deleting the original.'
+        },
+        {
+          id: 'mkdir-backups',
+          title: '14. Prepare a backup',
+          description: 'Now prepare a <strong>backups</strong> folder in the current folder.',
+          success: 'Backup folder ready.',
+          concept: 'A solid shell scenario chains observation, creation, copy, and verification.'
+        },
+        {
+          id: 'cp-backup-file',
+          title: '15. Store the backup',
+          description: 'Copy `briefing.copy.txt` into <strong>backups</strong> while keeping the original in <strong>mission</strong>.',
+          success: 'The backup is stored in backups.',
+          concept: '`cp source folder/` keeps the same file name inside the target folder.'
+        },
+        {
+          id: 'cd-backups',
+          title: '16. Check the backup',
+          description: 'Enter the <strong>backups</strong> folder.',
+          success: 'You are in backups.',
+          concept: 'When an objective no longer gives the exact command, infer the action from the verb.'
+        },
+        {
+          id: 'ls-backups',
+          title: '17. Inspect without assistance',
+          description: 'Check that the expected copy is present here.',
+          success: 'Backup confirmed.',
+          concept: '`ls` remains the verification reflex after an operation.'
+        },
+        {
+          id: 'cd-mission-final',
+          title: '18. Return to the mission station',
+          description: 'Return to the parent <strong>mission</strong> folder.',
+          success: 'Back in mission.',
+          concept: '`cd ..` lets you cleanly leave a subfolder.'
+        },
+        {
+          id: 'rm-working-copy',
+          title: '19. Clean the draft',
+          description: 'Delete only the working copy left in <strong>mission</strong>.',
+          success: 'Draft deleted, backup preserved.',
+          concept: '`rm` must be precise: delete the temporary file, not the backup.'
+        },
+        {
+          id: 'pwd-final',
+          title: '20. Final check',
+          description: 'Display your current position to close the mission.',
+          success: 'Position confirmed, mission complete!',
+          concept: '`pwd` closes a scenario well: you know exactly where you ended.'
         },
       ],
       commandDescriptions: {
@@ -1086,6 +1263,7 @@ REMARQUES
         ll: 'Alias for ls -l: detailed file listing.',
         mkdir: 'Creates a new folder.',
         touch: 'Creates or updates a file.',
+        cp: 'Copies a file or folder.',
         rm: 'Deletes a file or folder.',
         chmod: 'Changes permissions on a file or folder.',
         cat: 'Displays file content (supports redirection).',
@@ -1199,6 +1377,18 @@ REMARQUES
       filesCreated: 'File(s) created: {items}',
       timestampUpdated: 'Timestamp updated: {items}',
       noFileProcessed: 'No file processed',
+      cpNeedSourceTarget: 'cp: specify a source and a destination.',
+      cpOnlyOneSource: 'cp: this simulation accepts only one source at a time.',
+      cpSourceNotFound: "cp: cannot find '{path}'",
+      cpRecursiveRequired: "cp: '{path}' is a folder. Add the -r option to copy it.",
+      cpSourcePermission: "cp: insufficient permissions to read '{path}'",
+      cpInvalidTarget: "cp: invalid destination '{path}'",
+      cpTargetDirectoryMissing: "cp: target folder '{path}' does not exist",
+      cpParentPermission: "cp: insufficient permissions in '{name}'",
+      cpDestinationExists: "cp: destination '{path}' already exists",
+      cpDestinationIsDirectory: "cp: destination '{path}' is a folder",
+      cpDestinationPermission: "cp: insufficient permissions to write to '{path}'",
+      cpCopied: "Copy completed: '{source}' -> '{target}'",
       catNeedFile: 'cat: specify at least one file.',
       fileNotFound: '{command}: {path}: file not found',
       permissionDenied: '{command}: {path}: permission denied',
@@ -1271,6 +1461,14 @@ REMARQUES
         'mkdir-mission': '[strong]Memory tip[/strong]: `mkdir` means **Make Directory**, used to create a folder.',
         'ls-mission-check': '[strong]Memory tip[/strong]: an `ls` after `mkdir` instantly confirms that the folder exists.',
         'touch-briefing': '[strong]Memory tip[/strong]: `touch` creates or updates a file in one command.',
+        'cp-briefing-copy': '[strong]Memory tip[/strong]: `cp` means **Copy**, used to duplicate a file or folder.',
+        'mkdir-backups': '[strong]Memory tip[/strong]: `mkdir` prepares space before storing a backup.',
+        'cp-backup-file': '[strong]Memory tip[/strong]: `cp file folder/` copies into the folder while keeping the name.',
+        'cd-backups': '[strong]Memory tip[/strong]: `cd` also helps you check the result in the target folder.',
+        'ls-backups': '[strong]Memory tip[/strong]: `ls` visually validates an operation.',
+        'cd-mission-final': '[strong]Memory tip[/strong]: `cd ..` returns to the parent folder.',
+        'rm-working-copy': '[strong]Memory tip[/strong]: `rm` deletes a precise target, not “something similar”.',
+        'pwd-final': '[strong]Memory tip[/strong]: `pwd` closes the loop by confirming your position.',
       },
       tutorialIntroHint: 'Welcome to the cockpit! Click the input field to take control.',
       tutorialHelpHint: 'You are now at the controls. Need a hand? Just type `help`, then press Enter. ↵',
@@ -1315,6 +1513,28 @@ REMARQUES
         touchBriefingWrongTarget: "The expected file is 'briefing.txt', not '{target}'.",
         touchBriefingNoMission: 'Create the `mission` folder first, then run `touch briefing.txt` from that folder.',
         touchBriefingMissing: 'The file was not found in `mission`. Run `touch briefing.txt` there.',
+        cpBriefingNotCp: 'Duplicate the briefing with the `cp` command.',
+        cpBriefingNeedsSource: 'The expected source is `briefing.txt`, and the copy must be named `briefing.copy.txt`.',
+        cpBriefingMissing: 'I do not see `briefing.copy.txt` in mission yet.',
+        mkdirBackupsNotMkdir: 'Prepare the backup folder with `mkdir`.',
+        mkdirBackupsTarget: 'The expected folder is named `backups`.',
+        mkdirBackupsMissing: 'I do not see the `backups` folder in mission yet.',
+        cpBackupNotCp: 'Store the copy in backups with `cp`.',
+        cpBackupNeedsFolder: 'Create the `backups` folder first.',
+        cpBackupMissing: 'The saved copy must be inside `backups`.',
+        cdBackupsNotCd: 'Enter `backups` with `cd`.',
+        cdBackupsTarget: 'The target folder is `backups`.',
+        cdBackupsWrongPath: 'You are at {path}. You are expected in /home/user/documents/mission/backups.',
+        lsBackupsNotLs: 'Inspect the backup with `ls`.',
+        lsBackupsWrongPath: 'Move to /home/user/documents/mission/backups before checking.',
+        lsBackupsExpected: 'List the backups content to confirm the copy.',
+        cdMissionFinalNotCd: 'Return to the parent folder with `cd`.',
+        cdMissionFinalWrongPath: 'You are at {path}. Return to /home/user/documents/mission.',
+        rmWorkingCopyNotRm: 'Clean the working copy with `rm`.',
+        rmWorkingCopyTarget: 'The target to delete is `briefing.copy.txt` in mission.',
+        rmWorkingCopyStillExists: '`briefing.copy.txt` still exists in mission.',
+        pwdFinalNotPwd: 'Finish with `pwd` to display your position.',
+        pwdFinalWrongPath: 'You are at {path}. Return to mission before closing.',
       },
       manuals: {
         man: `
@@ -1438,6 +1658,22 @@ OPTIONS
 NOTES
     Creates missing files in the target directory if w+x permissions are present.
 `,
+        cp: `
+CP(1)                               Shell Commands                               CP(1)
+
+NAME
+    cp - copies a file or folder.
+
+SYNOPSIS
+    cp [-r] source destination
+
+OPTIONS
+    -r  recursively copies a folder and its content
+
+NOTES
+    The destination can be a new file name or an existing folder.
+    Folders require the -r option.
+`,
         cat: `
 CAT(1)                              Shell Commands                              CAT(1)
 
@@ -1546,6 +1782,7 @@ NOTES
                     - ll: Alias for ls -l: detailed file listing
                     - mkdir: Creates a new folder
                     - touch: Creates a new file
+                    - cp: Copies a file or folder
                     - rm: Deletes a file or folder
                     - chmod: Changes permissions on a file or folder
                     - cat: Reads and displays file content (can be redirected with > or >>)
@@ -1559,6 +1796,7 @@ NOTES
         ls: 'Usage: ls [-h] [-a] [-l]\nLists files and folders.',
         mkdir: 'Usage: mkdir [-h] [folder]\nCreates a new folder.',
         touch: 'Usage: touch [-h] [file]\nCreates a new file.',
+        cp: 'Usage: cp [-h] [-r] source destination\nCopies a file or folder.',
         rm: 'Usage: rm [-h] [-r] [file|folder]\nDeletes a file or folder.',
         chmod: 'Usage: chmod [-h] [permissions] [file|folder]\nChanges permissions on a file or folder.',
         cat: 'Usage: cat [-h] file...\nDisplays the content of one or more files.',

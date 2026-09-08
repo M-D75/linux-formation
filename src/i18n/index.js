@@ -176,6 +176,39 @@ export const messages = {
       missionRestoration: "Restauration : Monter l'opération",
       missionBackup: 'Sauvegarde : Dupliquer les fichiers utiles',
       missionQuestion: '🤔 Tu veux un copilote baptisé <span class="font-weight-bold">"Tutoriel"</span> ou tu fonces en solo ?',
+      missionSelectorLabel: 'Mission',
+      missionModeLabel: 'Type',
+      restartMission: 'Recommencer cette mission',
+      immediateFeedback: 'Feedback immédiat',
+      permissionLearningTitle: 'Gestion des droits',
+      permissionChallengeTitle: 'Défi droits Unix',
+      permissionChallengeObjective: 'Corrige les droits du projet sans commande imposée : `rapport.txt` doit être modifiable par le groupe, `scripts/analyse.sh` doit être exécutable, et `secret` doit être lisible/traversable par le groupe seulement.',
+      permissionMissionReady: 'Mission droits prête. Commence par identifier ton utilisateur.',
+      permissionMissionDone: 'Mission droits validée. Tu sais lire et corriger des permissions Unix.',
+      permissionInspectorEyebrow: 'Inspecteur',
+      permissionInspectorTitle: 'Droits et accès',
+      permissionActiveUser: 'Utilisateur courant',
+      permissionActiveGroups: 'Groupes',
+      permissionTargetsTitle: 'Cibles de la mission',
+      permissionSelectedTarget: 'Cible sélectionnée',
+      permissionOwnerGroupLine: 'Propriétaire : {owner} | Groupe : {group}',
+      permissionMatrixTitle: 'Lecture des bits',
+      permissionChallengeChecks: 'Critères du défi',
+      permissionOwnerScope: 'Propriétaire {owner}',
+      permissionGroupScope: 'Groupe {group}',
+      permissionOthersScope: 'Autres',
+      permissionNoTarget: 'Sélectionne une cible pour analyser ses droits.',
+      permissionReadShort: 'lire',
+      permissionWriteShort: 'écrire',
+      permissionExecuteShort: 'exécuter',
+      permissionTraverseShort: 'traverser',
+      permissionCurrentUserCan: '{user} peut : {actions}.',
+      permissionCurrentUserCannot: "{user} n'a aucun droit direct sur cette cible.",
+      permissionCheckReportGroupWrite: 'rapport.txt : propriétaire rw, groupe rw, autres aucun droit',
+      permissionCheckScriptExecutable: 'scripts/analyse.sh : propriétaire rwx, groupe r-x, autres aucun droit',
+      permissionCheckSecretGroupAccess: 'secret : propriétaire rwx, groupe r-x, autres aucun droit',
+      permissionChallengeComplete: 'Défi validé : tous les droits attendus sont en place.',
+      permissionChallengePending: 'Pas encore. Points à corriger :\n- {items}',
       skip: 'Passer',
       startTutorial: 'Lancer le tutoriel',
       editorTitle: 'Édition - {path}',
@@ -217,6 +250,87 @@ export const messages = {
       treeAriaLabel: 'Visualisation de l’arborescence Linux',
     },
     navigationData: {
+      missions: [
+        { id: 'navigation', title: 'Navigation de base', description: "Se repérer, explorer, créer, copier et supprimer dans l'arborescence.", icon: 'mdi-folder-compass-outline' },
+        { id: 'permissions', title: 'Gestion des droits', description: 'Lire, interpréter et corriger les permissions utilisateur/groupe/autres.', icon: 'mdi-shield-key-outline' },
+      ],
+      missionModes: [
+        { value: 'learn', label: 'Apprentissage', description: 'Étapes guidées avec indices et explications immédiates.', icon: 'mdi-school-outline' },
+        { value: 'challenge', label: 'Défi', description: 'Objectif global, validation par état final et feedback immédiat.', icon: 'mdi-clipboard-check-outline' },
+      ],
+      permissionMission: {
+        targets: {
+          '/home/alice/projet-alpha/rapport.txt': 'rapport.txt',
+          '/home/alice/projet-alpha/scripts/analyse.sh': 'analyse.sh',
+          '/home/alice/projet-alpha/secret': 'secret/',
+        },
+        steps: [
+          {
+            id: 'identity-whoami',
+            title: '1. Identifier ton utilisateur',
+            description: 'Tape `whoami` pour savoir sous quelle identité tu travailles.',
+            success: 'Tu travailles en tant que alice.',
+            concept: 'Les droits Unix se lisent toujours depuis une identité : propriétaire, groupe, ou autres.'
+          },
+          {
+            id: 'identity-id',
+            title: '2. Lire les groupes',
+            description: 'Tape `id` ou `groups` pour voir les groupes de ton utilisateur.',
+            success: 'alice appartient au groupe dev.',
+            concept: "Si tu n'es pas propriétaire, ton accès peut venir du groupe du fichier."
+          },
+          {
+            id: 'inspect-rights',
+            title: '3. Inspecter les droits',
+            description: 'Utilise `ls -l` ou `ll` pour afficher les droits détaillés du projet.',
+            success: 'Tu vois maintenant les triplets propriétaire / groupe / autres.',
+            concept: '`-rw-r-----` se lit par blocs : type, propriétaire, groupe, autres.'
+          },
+          {
+            id: 'open-report-group',
+            title: '4. Ouvrir le rapport au groupe',
+            description: 'Première modification avec `chmod` : ajoute le droit d’écriture au groupe sur `rapport.txt` sans ouvrir aux autres.',
+            guidance: {
+              title: 'Commande guidée',
+              command: 'chmod g+w rapport.txt',
+              note: '`g` vise le groupe, `+` ajoute un droit, `w` signifie écriture. Après la commande, observe l’inspecteur : le bloc groupe doit devenir `rw-`.'
+            },
+            success: 'Le groupe dev peut maintenant lire et modifier rapport.txt.',
+            concept: '`chmod g+w fichier` ajoute seulement le bit écriture au groupe.'
+          },
+          {
+            id: 'make-script-executable',
+            title: '5. Rendre le script lançable',
+            description: 'Même logique, autre cible : ajoute le droit d’exécution au propriétaire sur `scripts/analyse.sh`.',
+            guidance: {
+              title: 'Même structure',
+              command: 'chmod u+x scripts/analyse.sh',
+              note: '`u` vise le propriétaire, `+` ajoute, `x` rend le fichier exécutable. Compare avec l’étape précédente : seul le sujet et le droit changent.'
+            },
+            success: 'Le script est maintenant exécutable par son propriétaire.',
+            concept: 'Sur un fichier, `x` autorise l’exécution ; sur un dossier, `x` autorise la traversée.'
+          },
+          {
+            id: 'open-secret-directory',
+            title: '6. Ouvrir le dossier secret au groupe',
+            description: 'À toi de composer la correction : le groupe `dev` doit pouvoir lire et traverser `secret`, mais les autres ne doivent rien avoir.',
+            guidance: {
+              title: 'Indice, pas commande complète',
+              note: 'Résultat attendu sur `secret` : propriétaire `rwx`, groupe `r-x`, autres `---`. En notation numérique, cela correspond à `750`.'
+            },
+            success: 'Le dossier secret est accessible au groupe dev, mais reste fermé aux autres.',
+            concept: 'Pour lister et entrer dans un dossier, il faut généralement `r+x` sur ce dossier.'
+          },
+        ],
+        errors: {
+          'identity-whoami': 'Commence par `whoami` pour connaître l’utilisateur courant.',
+          'identity-id': 'Utilise `id` ou `groups` pour voir les groupes de alice.',
+          'inspect-rights': 'Affiche une liste détaillée avec `ls -l` ou `ll`.',
+          'open-report-group': 'Cible `rapport.txt` et ajoute le droit `w` au groupe, par exemple avec `chmod g+w rapport.txt`.',
+          'make-script-executable': 'Cible `scripts/analyse.sh` et ajoute le droit `x` au propriétaire, par exemple `chmod u+x scripts/analyse.sh`.',
+          'open-secret-directory': 'Le dossier `secret` doit donner `r+x` au groupe et aucun droit aux autres, par exemple `chmod 750 secret`.',
+        },
+      },
       tutorialSteps: [
         {
           id: 'help',
@@ -363,6 +477,9 @@ export const messages = {
         '': 'Information système',
         help: 'Affiche la liste des commandes disponibles.',
         man: "Consulte la documentation détaillée d'une commande.",
+        whoami: "Affiche l'utilisateur courant.",
+        id: "Affiche l'identité et les groupes de l'utilisateur courant.",
+        groups: "Affiche les groupes de l'utilisateur courant.",
         pwd: 'Affiche le chemin du répertoire courant.',
         echo: 'Renvoie du texte dans le terminal.',
         cd: 'Change de répertoire.',
@@ -384,6 +501,7 @@ export const messages = {
         { id: 'nettoyeur', title: 'Nettoyeur', description: 'Supprime un dossier avec rm -r.', icon: 'mdi-delete-sweep' },
         { id: 'sage', title: 'Sage du shell', description: 'Consulte 3 pages man.', icon: 'mdi-book-open-variant' },
         { id: 'mentor', title: 'Mentor', description: "Termine le tutoriel d'entraînement.", icon: 'mdi-school-outline' },
+        { id: 'gardien', title: 'Gardien des droits', description: 'Termine une mission de gestion des permissions.', icon: 'mdi-shield-check' },
       ],
       robotDialogues: [
         "Je t'observe, courage.",
@@ -675,6 +793,45 @@ DESCRIPTION
     Sans argument, affiche toutes les commandes disponibles. Avec une commande,
     renvoie un bref rappel d'usage. Pour plus de détails, utilisez 'man <commande>'.
 `,
+        whoami: `
+WHOAMI(1)                          Commandes Shell                          WHOAMI(1)
+
+NOM
+    whoami - affiche l'utilisateur courant.
+
+SYNOPSIS
+    whoami
+
+DESCRIPTION
+    Renvoie l'identité active dans la simulation. Les permissions sont évaluées
+    à partir de cet utilisateur.
+`,
+        id: `
+ID(1)                              Commandes Shell                              ID(1)
+
+NOM
+    id - affiche l'identité et les groupes.
+
+SYNOPSIS
+    id
+
+DESCRIPTION
+    Affiche l'utilisateur courant, son groupe principal et les groupes utilisés
+    pour interpréter les permissions de fichiers.
+`,
+        groups: `
+GROUPS(1)                          Commandes Shell                          GROUPS(1)
+
+NOM
+    groups - affiche les groupes de l'utilisateur courant.
+
+SYNOPSIS
+    groups
+
+DESCRIPTION
+    Liste les groupes qui peuvent donner accès à un fichier ou dossier lorsque
+    l'utilisateur courant n'est pas le propriétaire.
+`,
         pwd: `
 PWD(1)                             Commandes Shell                             PWD(1)
 
@@ -883,6 +1040,9 @@ REMARQUES
                     Commandes disponibles :
                     - man : Affiche l'aide détaillée d'une commande
                     - help : Affiche ce message d'aide
+                    - whoami : Affiche l'utilisateur courant
+                    - id : Affiche l'identité et les groupes
+                    - groups : Affiche les groupes de l'utilisateur courant
                     - pwd : Affiche le chemin du répertoire courant
                     - echo : Affiche un message
                     - cd : Change de répertoire
@@ -911,7 +1071,10 @@ REMARQUES
         head: 'Usage : head [-h] [-n nombre] fichier...\nAffiche les premières lignes (10 par défaut).',
         tail: 'Usage : tail [-h] [-n nombre] fichier...\nAffiche les dernières lignes (10 par défaut).',
         nano: 'Usage : nano [-h] fichier\nOuvre un éditeur graphique pour modifier le fichier.',
-        man: "Usage : man [commande]\nAffiche la documentation détaillée d'une commande disponible dans cet environnement."
+        man: "Usage : man [commande]\nAffiche la documentation détaillée d'une commande disponible dans cet environnement.",
+        whoami: "Usage : whoami [-h]\nAffiche l'utilisateur courant.",
+        id: "Usage : id [-h]\nAffiche l'identité et les groupes de l'utilisateur courant.",
+        groups: "Usage : groups [-h]\nAffiche les groupes de l'utilisateur courant."
       },
     },
   },
@@ -1069,6 +1232,39 @@ REMARQUES
       missionRestoration: 'Restoration: Set up the operation',
       missionBackup: 'Backup: Duplicate useful files',
       missionQuestion: '🤔 Do you want a copilot named <span class="font-weight-bold">"Tutorial"</span>, or are you going solo?',
+      missionSelectorLabel: 'Mission',
+      missionModeLabel: 'Type',
+      restartMission: 'Restart this mission',
+      immediateFeedback: 'Immediate feedback',
+      permissionLearningTitle: 'Permission management',
+      permissionChallengeTitle: 'Unix permissions challenge',
+      permissionChallengeObjective: 'Fix the project permissions without a forced command: `rapport.txt` must be writable by the group, `scripts/analyse.sh` must be executable, and `secret` must be readable/traversable by the group only.',
+      permissionMissionReady: 'Permission mission ready. Start by identifying your user.',
+      permissionMissionDone: 'Permission mission completed. You can read and fix Unix permissions.',
+      permissionInspectorEyebrow: 'Inspector',
+      permissionInspectorTitle: 'Permissions and access',
+      permissionActiveUser: 'Current user',
+      permissionActiveGroups: 'Groups',
+      permissionTargetsTitle: 'Mission targets',
+      permissionSelectedTarget: 'Selected target',
+      permissionOwnerGroupLine: 'Owner: {owner} | Group: {group}',
+      permissionMatrixTitle: 'Permission bits',
+      permissionChallengeChecks: 'Challenge criteria',
+      permissionOwnerScope: 'Owner {owner}',
+      permissionGroupScope: 'Group {group}',
+      permissionOthersScope: 'Others',
+      permissionNoTarget: 'Select a target to inspect its permissions.',
+      permissionReadShort: 'read',
+      permissionWriteShort: 'write',
+      permissionExecuteShort: 'execute',
+      permissionTraverseShort: 'traverse',
+      permissionCurrentUserCan: '{user} can: {actions}.',
+      permissionCurrentUserCannot: '{user} has no direct permission on this target.',
+      permissionCheckReportGroupWrite: 'rapport.txt: owner rw, group rw, others no permissions',
+      permissionCheckScriptExecutable: 'scripts/analyse.sh: owner rwx, group r-x, others no permissions',
+      permissionCheckSecretGroupAccess: 'secret: owner rwx, group r-x, others no permissions',
+      permissionChallengeComplete: 'Challenge completed: all expected permissions are in place.',
+      permissionChallengePending: 'Not yet. Items to fix:\n- {items}',
       skip: 'Skip',
       startTutorial: 'Start tutorial',
       editorTitle: 'Editing - {path}',
@@ -1110,6 +1306,87 @@ REMARQUES
       treeAriaLabel: 'Linux file tree visualization',
     },
     navigationData: {
+      missions: [
+        { id: 'navigation', title: 'Basic navigation', description: 'Locate yourself, explore, create, copy, and delete in the file tree.', icon: 'mdi-folder-compass-outline' },
+        { id: 'permissions', title: 'Permission management', description: 'Read, interpret, and fix user/group/others permissions.', icon: 'mdi-shield-key-outline' },
+      ],
+      missionModes: [
+        { value: 'learn', label: 'Learning', description: 'Guided steps with hints and immediate explanations.', icon: 'mdi-school-outline' },
+        { value: 'challenge', label: 'Challenge', description: 'Global objective, final-state validation, and immediate feedback.', icon: 'mdi-clipboard-check-outline' },
+      ],
+      permissionMission: {
+        targets: {
+          '/home/alice/projet-alpha/rapport.txt': 'rapport.txt',
+          '/home/alice/projet-alpha/scripts/analyse.sh': 'analyse.sh',
+          '/home/alice/projet-alpha/secret': 'secret/',
+        },
+        steps: [
+          {
+            id: 'identity-whoami',
+            title: '1. Identify your user',
+            description: 'Type `whoami` to know which identity you are using.',
+            success: 'You are working as alice.',
+            concept: 'Unix permissions are always read from one identity: owner, group, or others.'
+          },
+          {
+            id: 'identity-id',
+            title: '2. Read the groups',
+            description: 'Type `id` or `groups` to see your user groups.',
+            success: 'alice belongs to the dev group.',
+            concept: 'If you are not the owner, your access can come from the file group.'
+          },
+          {
+            id: 'inspect-rights',
+            title: '3. Inspect permissions',
+            description: 'Use `ls -l` or `ll` to display detailed project permissions.',
+            success: 'You can now see the owner / group / others triplets.',
+            concept: '`-rw-r-----` is read in blocks: type, owner, group, others.'
+          },
+          {
+            id: 'open-report-group',
+            title: '4. Open the report to the group',
+            description: 'First change with `chmod`: add group write permission on `rapport.txt` without opening it to others.',
+            guidance: {
+              title: 'Guided command',
+              command: 'chmod g+w rapport.txt',
+              note: '`g` targets the group, `+` adds a permission, `w` means write. After the command, watch the inspector: the group block should become `rw-`.'
+            },
+            success: 'The dev group can now read and modify rapport.txt.',
+            concept: '`chmod g+w file` adds only the group write bit.'
+          },
+          {
+            id: 'make-script-executable',
+            title: '5. Make the script runnable',
+            description: 'Same logic, different target: add owner execute permission on `scripts/analyse.sh`.',
+            guidance: {
+              title: 'Same structure',
+              command: 'chmod u+x scripts/analyse.sh',
+              note: '`u` targets the owner, `+` adds, `x` makes the file executable. Compare with the previous step: only the subject and permission change.'
+            },
+            success: 'The script is now executable by its owner.',
+            concept: 'On a file, `x` allows execution; on a folder, `x` allows traversal.'
+          },
+          {
+            id: 'open-secret-directory',
+            title: '6. Open the secret folder to the group',
+            description: 'Now compose the fix yourself: the `dev` group must read and traverse `secret`, while others must have nothing.',
+            guidance: {
+              title: 'Hint, not full command',
+              note: 'Expected result on `secret`: owner `rwx`, group `r-x`, others `---`. In numeric notation, that is `750`.'
+            },
+            success: 'The secret folder is accessible to the dev group and still closed to others.',
+            concept: 'To list and enter a folder, you usually need `r+x` on that folder.'
+          },
+        ],
+        errors: {
+          'identity-whoami': 'Start with `whoami` to know the current user.',
+          'identity-id': 'Use `id` or `groups` to see alice groups.',
+          'inspect-rights': 'Display a detailed listing with `ls -l` or `ll`.',
+          'open-report-group': 'Target `rapport.txt` and add group `w`, for example with `chmod g+w rapport.txt`.',
+          'make-script-executable': 'Target `scripts/analyse.sh` and add owner `x`, for example `chmod u+x scripts/analyse.sh`.',
+          'open-secret-directory': 'The `secret` folder must grant `r+x` to the group and no permission to others, for example `chmod 750 secret`.',
+        },
+      },
       tutorialSteps: [
         {
           id: 'help',
@@ -1256,6 +1533,9 @@ REMARQUES
         '': 'System information',
         help: 'Displays the list of available commands.',
         man: 'Opens detailed documentation for a command.',
+        whoami: 'Displays the current user.',
+        id: 'Displays the current user identity and groups.',
+        groups: 'Displays the current user groups.',
         pwd: 'Displays the path of the current directory.',
         echo: 'Outputs text in the terminal.',
         cd: 'Changes directory.',
@@ -1277,6 +1557,7 @@ REMARQUES
         { id: 'nettoyeur', title: 'Cleaner', description: 'Delete a folder with rm -r.', icon: 'mdi-delete-sweep' },
         { id: 'sage', title: 'Shell sage', description: 'Read 3 man pages.', icon: 'mdi-book-open-variant' },
         { id: 'mentor', title: 'Mentor', description: 'Finish the training tutorial.', icon: 'mdi-school-outline' },
+        { id: 'gardien', title: 'Permission guardian', description: 'Complete a permission management mission.', icon: 'mdi-shield-check' },
       ],
       robotDialogues: [
         'I am watching your progress. Keep going.',
@@ -1568,6 +1849,45 @@ DESCRIPTION
     Without arguments, displays all available commands. With a command,
     returns a short usage reminder. For more detail, use 'man <command>'.
 `,
+        whoami: `
+WHOAMI(1)                           Shell Commands                           WHOAMI(1)
+
+NAME
+    whoami - displays the current user.
+
+SYNOPSIS
+    whoami
+
+DESCRIPTION
+    Returns the active identity in the simulation. Permissions are evaluated
+    from this user.
+`,
+        id: `
+ID(1)                               Shell Commands                               ID(1)
+
+NAME
+    id - displays identity and groups.
+
+SYNOPSIS
+    id
+
+DESCRIPTION
+    Displays the current user, primary group, and groups used to interpret
+    file permissions.
+`,
+        groups: `
+GROUPS(1)                           Shell Commands                           GROUPS(1)
+
+NAME
+    groups - displays current user groups.
+
+SYNOPSIS
+    groups
+
+DESCRIPTION
+    Lists the groups that can grant access to a file or folder when the
+    current user is not the owner.
+`,
         pwd: `
 PWD(1)                              Shell Commands                              PWD(1)
 
@@ -1775,6 +2095,9 @@ NOTES
                     Available commands:
                     - man: Shows detailed help for a command
                     - help: Shows this help message
+                    - whoami: Displays the current user
+                    - id: Displays identity and groups
+                    - groups: Displays current user groups
                     - pwd: Displays the path of the current directory
                     - echo: Displays a message
                     - cd: Changes directory
@@ -1803,7 +2126,10 @@ NOTES
         head: 'Usage: head [-h] [-n number] file...\nDisplays the first lines (10 by default).',
         tail: 'Usage: tail [-h] [-n number] file...\nDisplays the last lines (10 by default).',
         nano: 'Usage: nano [-h] file\nOpens a graphical editor to modify the file.',
-        man: 'Usage: man [command]\nDisplays the detailed documentation for a command available in this environment.'
+        man: 'Usage: man [command]\nDisplays the detailed documentation for a command available in this environment.',
+        whoami: 'Usage: whoami [-h]\nDisplays the current user.',
+        id: 'Usage: id [-h]\nDisplays the current user identity and groups.',
+        groups: 'Usage: groups [-h]\nDisplays the current user groups.'
       },
     },
   },

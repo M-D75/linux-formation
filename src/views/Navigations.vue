@@ -150,6 +150,66 @@
             </v-card>
         </v-dialog>
 
+        <div class="mission-toolbar">
+            <div class="mission-picker">
+                <v-select
+                    v-model="activeMissionId"
+                    :items="missionOptions"
+                    item-title="title"
+                    item-value="id"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                    :label="t('navigation.missionSelectorLabel')"
+                >
+                    <template #item="{ props, item }">
+                        <v-list-item
+                            v-bind="props"
+                            :prepend-icon="item.raw.icon"
+                            :subtitle="item.raw.description"
+                        ></v-list-item>
+                    </template>
+                    <template #selection="{ item }">
+                        <div class="mission-picker__selection">
+                            <v-icon size="18">{{ item.raw.icon }}</v-icon>
+                            <span>{{ item.raw.title }}</span>
+                        </div>
+                    </template>
+                </v-select>
+            </div>
+
+            <div class="mission-mode-control">
+                <span class="learning-mode-label">{{ t('navigation.missionModeLabel') }}</span>
+                <v-btn-toggle
+                    v-model="missionMode"
+                    mandatory
+                    density="compact"
+                    variant="outlined"
+                    color="primary"
+                    divided
+                    :aria-label="t('navigation.missionModeLabel')"
+                >
+                    <v-tooltip
+                        v-for="mode in missionModeOptions"
+                        :key="mode.value"
+                        :text="mode.description"
+                        location="bottom"
+                    >
+                        <template #activator="{ props }">
+                            <v-btn
+                                v-bind="props"
+                                :value="mode.value"
+                                size="small"
+                            >
+                                <v-icon size="16" class="mr-1">{{ mode.icon }}</v-icon>
+                                {{ mode.label }}
+                            </v-btn>
+                        </template>
+                    </v-tooltip>
+                </v-btn-toggle>
+            </div>
+        </div>
+
         <div class="learning-toolbar">
             <div class="learning-mode-control">
                 <span class="learning-mode-label">{{ t('navigation.learningModeLabel') }}</span>
@@ -363,7 +423,109 @@
                     </v-card>
                 </v-slide-y-transition>
 
+                <v-slide-y-transition>
+                    <v-card
+                        v-if="isPermissionsMission && permissionsMission.active"
+                        class="permission-mission-card"
+                        variant="text"
+                    >
+                        <v-card-title class="permission-mission-card__title">
+                            <v-icon color="teal-accent-3" class="mr-2">mdi-shield-key-outline</v-icon>
+                            <span>
+                                {{ missionMode === 'challenge' ? t('navigation.permissionChallengeTitle') : (currentPermissionMissionStep ? currentPermissionMissionStep.title : t('navigation.permissionLearningTitle')) }}
+                            </span>
+                        </v-card-title>
+
+                        <v-card-text>
+                            <div
+                                v-if="missionMode === 'challenge'"
+                                class="tutorial-description"
+                                v-html="formatLearningText(t('navigation.permissionChallengeObjective'))"
+                            ></div>
+                            <div
+                                v-else
+                                class="tutorial-description"
+                                v-html="currentPermissionMissionStep ? formatLearningText(currentPermissionMissionStep.description) : ''"
+                            ></div>
+
+                            <div
+                                v-if="missionMode !== 'challenge' && currentPermissionMissionStep?.guidance"
+                                class="permission-step-guide"
+                            >
+                                <div class="permission-step-guide__label">
+                                    {{ currentPermissionMissionStep.guidance.title }}
+                                </div>
+                                <v-chip
+                                    v-if="currentPermissionMissionStep.guidance.command"
+                                    size="small"
+                                    color="teal"
+                                    variant="elevated"
+                                    class="permission-step-guide__command"
+                                    prepend-icon="mdi-console"
+                                    @click="selectPermissionGuideCommand(currentPermissionMissionStep.guidance.command)"
+                                >
+                                    <code>{{ currentPermissionMissionStep.guidance.command }}</code>
+                                </v-chip>
+                                <div
+                                    class="permission-step-guide__note"
+                                    v-html="formatLearningText(currentPermissionMissionStep.guidance.note)"
+                                ></div>
+                            </div>
+
+                            <div
+                                v-if="permissionsMission.feedback"
+                                class="tutorial-feedback"
+                                :class="permissionsMission.feedbackType === 'success' ? 'is-success' : 'is-hint'"
+                            >
+                                <v-icon
+                                    size="18"
+                                    class="feedback-icon"
+                                    :color="permissionsMission.feedbackType === 'success' ? 'green-accent-3' : 'amber-accent-3'"
+                                >
+                                    {{ permissionsMission.feedbackType === 'success' ? 'mdi-check-circle' : 'mdi-lightbulb-on' }}
+                                </v-icon>
+                                <span v-html="highlightCommandNames(permissionsMission.feedback)"></span>
+                            </div>
+                        </v-card-text>
+
+                        <v-card-actions class="permission-mission-actions justify-space-between">
+                            <v-btn
+                                class="permission-restart-btn"
+                                variant="text"
+                                size="small"
+                                @click="setupPermissionsMission()"
+                            >
+                                {{ t('navigation.restartMission') }}
+                            </v-btn>
+                            <div
+                                class="permission-step-counter text-caption"
+                                v-if="missionMode !== 'challenge'"
+                            >
+                                {{ t('navigation.stepCounter', { current: permissionsMission.completed ? permissionsMission.steps.length : permissionsMission.currentStep + 1, total: permissionsMission.steps.length }) }}
+                            </div>
+                            <v-chip
+                                v-else
+                                size="small"
+                                color="teal"
+                                variant="tonal"
+                            >
+                                {{ t('navigation.immediateFeedback') }}
+                            </v-chip>
+                        </v-card-actions>
+                    </v-card>
+                </v-slide-y-transition>
+
                 <v-divider color="success"></v-divider>
+
+                <v-snackbar
+                    v-model="permissionsMission.showSuccess"
+                    timeout="4500"
+                    location="top"
+                    color="teal"
+                    variant="tonal"
+                >
+                    <v-icon>mdi-shield-check</v-icon><span>{{ t('navigation.permissionMissionDone') }}</span>
+                </v-snackbar>
 
                 <v-snackbar
                     v-model="tutorial.showSuccess"
@@ -472,46 +634,168 @@
                 <!-- Command output section -->
                 <v-list 
                     class="output-cmd"
-                    :class="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 'output-cmd-tutorial' : ''"
+                    :class="{ 'is-scrolling': terminalScrolling, 'is-scrollbar-near': terminalScrollbarNear }"
+                    @scroll.passive="showTerminalScrollbar"
+                    @pointermove="trackTerminalScrollbar"
+                    @pointerleave="terminalScrollbarNear = false"
                     ref="outputCmd"
                     role="log"
                     aria-live="polite"
                     :aria-label="t('navigation.terminalOutputLabel')"
                     base-color="white"
                     bg-color="#333"
-                    :height="tutorial.active && !tutorial.showIntro && !tutorial.completed ? 250 : ''"
-                    :style="{top: tutorial.active && !tutorial.showIntro && !tutorial.completed ? '25px' : '',
-                        'padding-bottom': tutorial.active && !tutorial.showIntro && !tutorial.completed ? '0px' : ''
-                    }"
                 >
                     <template
                         v-for="(cmd, index) in commandHistory"
                         :key="index"
                     >
-                        <v-tooltip :text="getHistoryTooltip(cmd)" location="bottom">
-                            <template #activator="{ props }">
-                                <v-list-item v-bind="props">
-                                    <div v-if="commandHistory.length-(cursorHistory) != index">
-                                        <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} `"></v-list-item-title>
+                        <v-list-item>
+                            <div v-if="commandHistory.length-(cursorHistory) != index">
+                                <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} `"></v-list-item-title>
 
-                                        <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
-                                    </div>
+                                <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
+                            </div>
 
-                                    <div v-else>
-                                        <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} <i class='mdi-map-marker mdi in-terminal-i v-icon' aria-hidden='true'></i>`"></v-list-item-title>
+                            <div v-else>
+                                <v-list-item-title  v-html="`<span style='color: #33ff90'>$ ${cmd.command.split(' ')[0]}</span> ${cmd.command.split(' ').slice(1).join(' ')} <i class='mdi-map-marker mdi in-terminal-i v-icon' aria-hidden='true'></i>`"></v-list-item-title>
 
-                                        <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
-                                    </div>
-                                </v-list-item>
-                            </template>
-                        </v-tooltip>
+                                <v-list-item-subtitle v-html="cmd.output.replaceAll('\n', '<br>')"></v-list-item-subtitle>
+                            </div>
+                        </v-list-item>
                     </template>
                 </v-list>
             </div>
 
             <!-- Tree visualization section -->
-            <div class="tree-panel">
-                <div class="tree-legend" :aria-label="t('navigation.treeLegendTitle')">
+            <div class="tree-panel" :class="{ 'tree-panel--permissions': isPermissionsMission }">
+                <div
+                    v-if="isPermissionsMission"
+                    class="permission-inspector"
+                >
+                    <div class="permission-inspector__header">
+                        <div>
+                            <div class="permission-inspector__eyebrow">{{ t('navigation.permissionInspectorEyebrow') }}</div>
+                            <h2>{{ t('navigation.permissionInspectorTitle') }}</h2>
+                        </div>
+                        <v-chip
+                            color="teal"
+                            variant="tonal"
+                            prepend-icon="mdi-account-key-outline"
+                        >
+                            {{ currentUser }}
+                        </v-chip>
+                    </div>
+
+                    <div class="permission-context-grid">
+                        <div class="permission-context">
+                            <span>{{ t('navigation.permissionActiveUser') }}</span>
+                            <strong>{{ currentUser }}</strong>
+                        </div>
+                        <div class="permission-context">
+                            <span>{{ t('navigation.permissionActiveGroups') }}</span>
+                            <strong>{{ currentGroups.join(', ') }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="permission-targets">
+                        <div class="permission-section-title">{{ t('navigation.permissionTargetsTitle') }}</div>
+                        <v-chip-group
+                            v-model="selectedPermissionPath"
+                            column
+                            mandatory
+                        >
+                            <v-chip
+                                v-for="target in permissionTargets"
+                                :key="target.path"
+                                :value="target.path"
+                                :prepend-icon="target.type === 'd' ? 'mdi-folder-key-outline' : 'mdi-file-key-outline'"
+                                :color="selectedPermissionPath === target.path ? 'teal' : 'blue-grey'"
+                                variant="tonal"
+                            >
+                                {{ target.label }} <code>{{ target.rights }}</code>
+                            </v-chip>
+                        </v-chip-group>
+                    </div>
+
+                    <div
+                        v-if="selectedPermissionMeta"
+                        class="permission-selected"
+                    >
+                        <div class="permission-selected__meta">
+                            <div>
+                                <span>{{ t('navigation.permissionSelectedTarget') }}</span>
+                                <strong>{{ selectedPermissionMeta.name }}</strong>
+                            </div>
+                            <code>{{ selectedPermissionMeta.rights }}</code>
+                        </div>
+                        <div class="permission-selected__owner">
+                            {{ t('navigation.permissionOwnerGroupLine', { owner: selectedPermissionMeta.user, group: selectedPermissionMeta.group }) }}
+                        </div>
+                        <div class="permission-selected__summary">
+                            {{ selectedPermissionSummary }}
+                        </div>
+                    </div>
+
+                    <div class="permission-matrix">
+                        <div class="permission-section-title">{{ t('navigation.permissionMatrixTitle') }}</div>
+                        <div
+                            v-for="row in permissionInspectorRows"
+                            :key="row.key"
+                            :class="['permission-row', { 'permission-row--active': row.active }]"
+                        >
+                            <div class="permission-row__identity">
+                                <strong>{{ row.label }}</strong>
+                                <code>{{ row.triplet }} = {{ row.digit }}</code>
+                            </div>
+                            <div class="permission-row__bits">
+                                <v-chip
+                                    size="small"
+                                    :color="row.read ? 'lime-darken-1' : 'blue-grey'"
+                                    variant="flat"
+                                >
+                                    r
+                                </v-chip>
+                                <v-chip
+                                    size="small"
+                                    :color="row.write ? 'red-lighten-1' : 'blue-grey'"
+                                    variant="flat"
+                                >
+                                    w
+                                </v-chip>
+                                <v-chip
+                                    size="small"
+                                    :color="row.execute ? 'light-blue-darken-1' : 'blue-grey'"
+                                    variant="flat"
+                                >
+                                    x
+                                </v-chip>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="missionMode === 'challenge'"
+                        class="permission-checks"
+                    >
+                        <div class="permission-section-title">{{ t('navigation.permissionChallengeChecks') }}</div>
+                        <div
+                            v-for="check in permissionChallengeChecks"
+                            :key="check.id"
+                            :class="['permission-check', { 'permission-check--passed': check.passed }]"
+                        >
+                            <v-icon size="18">
+                                {{ check.passed ? 'mdi-check-circle' : 'mdi-circle-outline' }}
+                            </v-icon>
+                            <span>{{ check.label }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    v-show="!isPermissionsMission"
+                    class="tree-legend"
+                    :aria-label="t('navigation.treeLegendTitle')"
+                >
                     <div class="tree-legend__title">{{ t('navigation.treeLegendTitle') }}</div>
                     <div class="tree-legend__item">
                         <span class="tree-legend__marker tree-legend__marker--folder"></span>
@@ -530,7 +814,12 @@
                         {{ t('navigation.treeLegendPath') }}
                     </div>
                 </div>
-                <div id="tree" ref="tree" :aria-label="t('navigation.treeAriaLabel')"></div>
+                <div
+                    id="tree"
+                    ref="tree"
+                    v-show="!isPermissionsMission"
+                    :aria-label="t('navigation.treeAriaLabel')"
+                ></div>
             </div>
         </div>
 
@@ -793,7 +1082,7 @@
                             v-for="(cmd, index) in commandHistory.filter((cmd) => cmd.command != '')"
                             :key="index"
                         >
-                            <v-tooltip :text="getHistoryTooltip(cmd)" location="top">
+                            <v-tooltip :text="getHistoryTooltip(cmd)" :disabled="!getHistoryTooltip(cmd)" max-width="320" location="top">
                                 <template #activator="{ props }">
                                     <v-chip 
                                         v-bind="props"
@@ -845,6 +1134,112 @@
     return localTree;
   };
 
+  const buildPermissionsTreeData = () => ({
+    name: 'root',
+    type: 'd',
+    rights: 'drwxr-xr-x',
+    user: 'root',
+    group: 'root',
+    date: '24-11-23 14:00',
+    children: [
+      {
+        name: 'home',
+        type: 'd',
+        rights: 'drwxr-xr-x',
+        user: 'root',
+        group: 'root',
+        date: '24-11-23 14:00',
+        children: [
+          {
+            name: 'alice',
+            type: 'd',
+            rights: 'drwxr-x---',
+            user: 'alice',
+            group: 'dev',
+            date: '24-11-23 13:50',
+            children: [
+              {
+                name: 'projet-alpha',
+                type: 'd',
+                rights: 'drwxr-x---',
+                user: 'alice',
+                group: 'dev',
+                date: '24-11-23 13:55',
+                children: [
+                  {
+                    name: 'rapport.txt',
+                    type: 'f',
+                    rights: '-rw-r-----',
+                    user: 'alice',
+                    group: 'dev',
+                    date: '24-11-23 13:56',
+                    content: 'Rapport projet alpha\nStatut: brouillon\nAction: autoriser ecriture au groupe dev.\n',
+                    children: null,
+                  },
+                  {
+                    name: 'scripts',
+                    type: 'd',
+                    rights: 'drwxr-x---',
+                    user: 'alice',
+                    group: 'dev',
+                    date: '24-11-23 13:57',
+                    children: [
+                      {
+                        name: 'analyse.sh',
+                        type: 'f',
+                        rights: '-rw-r-----',
+                        user: 'alice',
+                        group: 'dev',
+                        date: '24-11-23 13:58',
+                        content: '#!/bin/bash\necho "Analyse projet alpha"\n',
+                        children: null,
+                      },
+                    ],
+                  },
+                  {
+                    name: 'secret',
+                    type: 'd',
+                    rights: 'drwx------',
+                    user: 'alice',
+                    group: 'dev',
+                    date: '24-11-23 13:59',
+                    children: [
+                      {
+                        name: 'notes.txt',
+                        type: 'f',
+                        rights: '-rw-------',
+                        user: 'alice',
+                        group: 'dev',
+                        date: '24-11-23 14:00',
+                        content: 'Notes internes du projet alpha.\n',
+                        children: null,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            name: 'bob',
+            type: 'd',
+            rights: 'drwxr-x---',
+            user: 'bob',
+            group: 'dev',
+            date: '24-11-23 13:45',
+            children: [],
+          },
+        ],
+      },
+    ],
+  });
+
+  const DEFAULT_MISSION_ID = 'navigation';
+  const PERMISSIONS_MISSION_ID = 'permissions';
+  const DEFAULT_MISSION_MODE = 'learn';
+  const NAVIGATION_START_PATH = 'home/user';
+  const PERMISSIONS_START_PATH = 'home/alice/projet-alpha';
+
   const loadLearningMode = () => {
     if (typeof window === 'undefined') {
       return DEFAULT_LEARNING_MODE;
@@ -857,8 +1252,116 @@
   export default {
     name: 'FolderTree',
     computed: {
+        missionOptions() {
+            return tm('navigationData.missions') || [];
+        },
+        missionModeOptions() {
+            return tm('navigationData.missionModes') || [];
+        },
+        activeMission() {
+            return this.missionOptions.find((mission) => mission.id === this.activeMissionId) || this.missionOptions[0] || null;
+        },
+        activeMissionMode() {
+            return this.missionModeOptions.find((mode) => mode.value === this.missionMode) || this.missionModeOptions[0] || null;
+        },
+        isPermissionsMission() {
+            return this.activeMissionId === PERMISSIONS_MISSION_ID;
+        },
         currentTutorialStep() {
             return this.tutorial.steps[this.tutorial.currentStep] || null;
+        },
+        currentPermissionMissionStep() {
+            return this.permissionsMission.steps[this.permissionsMission.currentStep] || null;
+        },
+        permissionTargets() {
+            const labels = tm('navigationData.permissionMission.targets') || {};
+            return this.permissionTargetPaths.map((path) => {
+                const node = this.root ? this.getNodeFromPath(path, { includeFiles: true })?.node : null;
+                const meta = node?.data || {};
+                return {
+                    path,
+                    label: labels[path] || path,
+                    name: meta.name || path.split('/').pop(),
+                    rights: meta.rights || '----------',
+                    type: meta.type || '',
+                };
+            });
+        },
+        selectedPermissionNode() {
+            if (!this.root || !this.selectedPermissionPath) {
+                return null;
+            }
+            return this.getNodeFromPath(this.selectedPermissionPath, { includeFiles: true })?.node || null;
+        },
+        selectedPermissionMeta() {
+            return this.selectedPermissionNode?.data || null;
+        },
+        permissionInspectorRows() {
+            const meta = this.selectedPermissionMeta;
+            if (!meta?.rights) {
+                return [];
+            }
+            const rights = meta.rights;
+            const rows = [
+                {
+                    key: 'owner',
+                    label: this.t('navigation.permissionOwnerScope', { owner: meta.user || '-' }),
+                    triplet: rights.slice(1, 4),
+                    active: meta.user === this.currentUser,
+                },
+                {
+                    key: 'group',
+                    label: this.t('navigation.permissionGroupScope', { group: meta.group || '-' }),
+                    triplet: rights.slice(4, 7),
+                    active: this.currentGroups.includes(meta.group),
+                },
+                {
+                    key: 'others',
+                    label: this.t('navigation.permissionOthersScope'),
+                    triplet: rights.slice(7, 10),
+                    active: meta.user !== this.currentUser && !this.currentGroups.includes(meta.group),
+                },
+            ];
+
+            return rows.map((row) => ({
+                ...row,
+                digit: this.getPermissionDigit(row.triplet),
+                read: row.triplet.includes('r'),
+                write: row.triplet.includes('w'),
+                execute: row.triplet.includes('x'),
+            }));
+        },
+        selectedPermissionSummary() {
+            const meta = this.selectedPermissionMeta;
+            if (!meta) {
+                return this.t('navigation.permissionNoTarget');
+            }
+            const block = this.getPermissionBlock(meta);
+            const abilities = [];
+            if (block.includes('r')) {
+                abilities.push(this.t('navigation.permissionReadShort'));
+            }
+            if (block.includes('w')) {
+                abilities.push(this.t('navigation.permissionWriteShort'));
+            }
+            if (block.includes('x')) {
+                abilities.push(meta.type === 'd'
+                    ? this.t('navigation.permissionTraverseShort')
+                    : this.t('navigation.permissionExecuteShort'));
+            }
+            return abilities.length
+                ? this.t('navigation.permissionCurrentUserCan', { user: this.currentUser, actions: abilities.join(', ') })
+                : this.t('navigation.permissionCurrentUserCannot', { user: this.currentUser });
+        },
+        permissionChallengeChecks() {
+            if (!this.root) {
+                return [];
+            }
+            const checks = this.getPermissionChallengeChecks();
+            return checks.map((check) => ({
+                ...check,
+                passed: check.passed(),
+            }));
         },
         earnedBadgesCount() {
             return this.badges.filter((badge) => badge.earned).length;
@@ -955,6 +1458,19 @@
         },
     },
     watch: {
+        activeMissionId() {
+            this.applyMissionSelection();
+        },
+        missionMode(mode) {
+            const availableModes = this.missionModeOptions.map((entry) => entry.value);
+            if (!availableModes.includes(mode)) {
+                this.missionMode = DEFAULT_MISSION_MODE;
+                return;
+            }
+            if (this.isPermissionsMission) {
+                this.setupPermissionsMission();
+            }
+        },
         command(val) {
             if (val && this.showCommandHint) {
                 this.showCommandHint = false;
@@ -1029,6 +1545,15 @@
                     other: [],
                 }
             },
+            activeMissionId: DEFAULT_MISSION_ID,
+            missionMode: DEFAULT_MISSION_MODE,
+            missionStartPath: NAVIGATION_START_PATH,
+            selectedPermissionPath: '/home/alice/projet-alpha/rapport.txt',
+            permissionTargetPaths: [
+                '/home/alice/projet-alpha/rapport.txt',
+                '/home/alice/projet-alpha/scripts/analyse.sh',
+                '/home/alice/projet-alpha/secret',
+            ],
             currentUser: 'user',
             currentGroups: ['user'],
             learningMode: loadLearningMode(),
@@ -1041,6 +1566,15 @@
                 feedback: '',
                 feedbackType: '',
                 steps: tm('navigationData.tutorialSteps') || [],
+            },
+            permissionsMission: {
+                active: false,
+                completed: false,
+                showSuccess: false,
+                currentStep: 0,
+                feedback: '',
+                feedbackType: '',
+                steps: tm('navigationData.permissionMission.steps') || [],
             },
             showCommandHint: true,
             signals: [],
@@ -1056,6 +1590,7 @@
                 removedDirectory: false,
                 manUses: 0,
                 tutorialCompleted: false,
+                permissionsCompleted: false,
             },
             nanoEditor: {
                 show: false,
@@ -1117,7 +1652,8 @@
             robotDialoguePool: tm('navigationData.robotDialogues') || [],
             robotCommandKeywords: [
                 'help', 'pwd', 'ls', 'cd', 'mkdir', 'touch',
-                'cp', 'rm', 'chmod', 'cat', 'head', 'tail', 'nano', 'echo'
+                'cp', 'rm', 'chmod', 'cat', 'head', 'tail', 'nano', 'echo',
+                'whoami', 'id', 'groups'
             ],
         robotDialogueIconPool: [
             'mdi-robot-excited',
@@ -1145,6 +1681,9 @@
                 helpHintShown: false,
                 persistentId: null,
             },
+            terminalScrolling: false,
+            terminalScrollbarNear: false,
+            terminalScrollTimer: null,
             telemetryQueue: [],
             telemetryFlushPromise: null,
             telemetryHeartbeatTimer: null,
@@ -1164,6 +1703,7 @@
         this.startParticipantTelemetry();
     },
     beforeUnmount() {
+        clearTimeout(this.terminalScrollTimer);
         this.stopParticipantTelemetry();
         this.signalTimers.forEach((timer) => clearTimeout(timer));
         this.signalTimers = [];
@@ -1210,6 +1750,211 @@
         formatLearningText(message = '') {
             return (message || '').replace(/`([^`]+)`/g, '<code>$1</code>');
         },
+        getPermissionDigit(triplet = '---') {
+            const values = { r: 4, w: 2, x: 1 };
+            return ['r', 'w', 'x'].reduce((total, perm) => (
+                total + (triplet.includes(perm) ? values[perm] : 0)
+            ), 0);
+        },
+        getNodeMetaByPath(path) {
+            if (!this.root || !path) {
+                return null;
+            }
+            return this.getNodeFromPath(path, { includeFiles: true })?.node?.data || null;
+        },
+        getRightsTriplet(path, scope) {
+            const meta = this.getNodeMetaByPath(path);
+            if (!meta?.rights) {
+                return '---';
+            }
+            if (scope === 'owner') {
+                return meta.rights.slice(1, 4);
+            }
+            if (scope === 'group') {
+                return meta.rights.slice(4, 7);
+            }
+            return meta.rights.slice(7, 10);
+        },
+        hasPermissionBits(path, scope, bits) {
+            const triplet = this.getRightsTriplet(path, scope);
+            return bits.split('').every((bit) => triplet.includes(bit));
+        },
+        hasExactPermissionTriplet(path, scope, expected) {
+            return this.getRightsTriplet(path, scope) === expected;
+        },
+        getPermissionChallengeChecks() {
+            return [
+                {
+                    id: 'report-group-write',
+                    label: this.t('navigation.permissionCheckReportGroupWrite'),
+                    passed: () => this.hasExactPermissionTriplet('/home/alice/projet-alpha/rapport.txt', 'owner', 'rw-')
+                        && this.hasExactPermissionTriplet('/home/alice/projet-alpha/rapport.txt', 'group', 'rw-')
+                        && this.hasExactPermissionTriplet('/home/alice/projet-alpha/rapport.txt', 'others', '---'),
+                },
+                {
+                    id: 'script-executable',
+                    label: this.t('navigation.permissionCheckScriptExecutable'),
+                    passed: () => this.hasExactPermissionTriplet('/home/alice/projet-alpha/scripts/analyse.sh', 'owner', 'rwx')
+                        && this.hasExactPermissionTriplet('/home/alice/projet-alpha/scripts/analyse.sh', 'group', 'r-x')
+                        && this.hasExactPermissionTriplet('/home/alice/projet-alpha/scripts/analyse.sh', 'others', '---'),
+                },
+                {
+                    id: 'secret-group-access',
+                    label: this.t('navigation.permissionCheckSecretGroupAccess'),
+                    passed: () => this.hasExactPermissionTriplet('/home/alice/projet-alpha/secret', 'owner', 'rwx')
+                        && this.hasExactPermissionTriplet('/home/alice/projet-alpha/secret', 'group', 'r-x')
+                        && this.hasExactPermissionTriplet('/home/alice/projet-alpha/secret', 'others', '---'),
+                },
+            ];
+        },
+        getPermissionChallengeFeedback() {
+            const checks = this.getPermissionChallengeChecks().map((check) => ({
+                ...check,
+                passed: check.passed(),
+            }));
+            const missing = checks.filter((check) => !check.passed);
+            if (!missing.length) {
+                return {
+                    complete: true,
+                    message: this.t('navigation.permissionChallengeComplete'),
+                };
+            }
+            return {
+                complete: false,
+                message: this.t('navigation.permissionChallengePending', {
+                    items: missing.map((check) => check.label).join('\n- '),
+                }),
+            };
+        },
+        finishPermissionsMission(command = '') {
+            this.permissionsMission.completed = true;
+            this.permissionsMission.active = false;
+            this.permissionsMission.showSuccess = true;
+            this.permissionsMission.currentStep = this.permissionsMission.steps.length;
+            this.permissionsMission.feedback = this.t('navigation.permissionMissionDone');
+            this.permissionsMission.feedbackType = 'success';
+            this.output = this.t('navigation.permissionMissionDone');
+            this.stats.permissionsCompleted = true;
+            this.checkBadges();
+            this.queueTelemetryEvent('permissions_mission_completed', {
+                mode: this.missionMode,
+                command,
+                path: this.getSessionPath(),
+            }, { immediate: true });
+            this.announceRobot(this.t('navigation.permissionMissionDone'), {
+                duration: 4200,
+                mood: 'success',
+                type: 'success',
+                icon: 'mdi-shield-check',
+            });
+            this.playSoundEffect('success');
+        },
+        handlePermissionMissionProgress(cmd, params, commandState = '', issuedCommand = '') {
+            if (!this.isPermissionsMission || !this.permissionsMission.active || this.permissionsMission.completed) {
+                return;
+            }
+
+            const normalizedCmd = (cmd || '').toLowerCase();
+            if (!normalizedCmd) {
+                return;
+            }
+
+            if (this.missionMode === 'challenge') {
+                const result = this.getPermissionChallengeFeedback();
+                this.permissionsMission.feedback = result.message;
+                this.permissionsMission.feedbackType = result.complete ? 'success' : 'hint';
+                if (result.complete) {
+                    this.finishPermissionsMission(issuedCommand);
+                } else if (commandState === 'valid') {
+                    this.playSoundEffect('warning');
+                }
+                return;
+            }
+
+            const step = this.currentPermissionMissionStep;
+            if (!step) {
+                return;
+            }
+
+            const paramsList = Array.isArray(params)
+                ? params.filter((param) => typeof param === 'string' && param.trim() !== '')
+                : [];
+            let success = false;
+
+            switch (step.id) {
+                case 'identity-whoami':
+                    success = normalizedCmd === 'whoami';
+                    break;
+                case 'identity-id':
+                    success = normalizedCmd === 'id' || normalizedCmd === 'groups';
+                    break;
+                case 'inspect-rights':
+                    success = normalizedCmd === 'll'
+                        || (normalizedCmd === 'ls' && paramsList.some((param) => param.startsWith('-') && param.includes('l')));
+                    break;
+                case 'open-report-group':
+                    success = this.hasPermissionBits('/home/alice/projet-alpha/rapport.txt', 'group', 'rw');
+                    break;
+                case 'make-script-executable':
+                    success = this.hasPermissionBits('/home/alice/projet-alpha/scripts/analyse.sh', 'owner', 'x');
+                    break;
+                case 'open-secret-directory':
+                    success = this.hasPermissionBits('/home/alice/projet-alpha/secret', 'group', 'rx')
+                        && this.hasExactPermissionTriplet('/home/alice/projet-alpha/secret', 'others', '---');
+                    break;
+                default:
+                    success = false;
+            }
+
+            if (success) {
+                const message = step.concept
+                    ? `${step.success}\n${this.t('terminal.conceptPrefix')} ${step.concept}`
+                    : step.success;
+                this.permissionsMission.feedback = message;
+                this.permissionsMission.feedbackType = 'success';
+                this.permissionsMission.currentStep += 1;
+                this.announceRobot(message, {
+                    mood: 'success',
+                    type: 'success',
+                    icon: 'mdi-check-circle',
+                    persistentUntilAction: this.showDetailedTutorialFeedback,
+                });
+                this.queueTelemetryEvent('permissions_step_completed', {
+                    stepId: step.id,
+                    stepIndex: this.permissionsMission.currentStep - 1,
+                    totalSteps: this.permissionsMission.steps.length,
+                    command: normalizedCmd,
+                    path: this.getSessionPath(),
+                }, { immediate: true });
+                this.playSoundEffect('success');
+                if (this.permissionsMission.currentStep >= this.permissionsMission.steps.length) {
+                    this.finishPermissionsMission(issuedCommand);
+                }
+            } else {
+                const errors = tm('navigationData.permissionMission.errors') || {};
+                this.permissionsMission.feedback = errors[step.id] || this.t('terminal.tutorialCommandNoMatch');
+                this.permissionsMission.feedbackType = 'hint';
+                if (commandState === 'valid') {
+                    this.playSoundEffect('warning');
+                }
+            }
+        },
+        whoamiCommand() {
+            this.output = this.currentUser;
+            return 'valid';
+        },
+        groupsCommand() {
+            this.output = this.currentGroups.join(' ');
+            return 'valid';
+        },
+        idCommand() {
+            const primaryGroup = this.currentGroups[0] || this.currentUser;
+            const groups = this.currentGroups
+                .map((group, index) => `${1001 + index}(${group})`)
+                .join(',');
+            this.output = `uid=1001(${this.currentUser}) gid=1001(${primaryGroup}) groups=${groups}`;
+            return 'valid';
+        },
         refreshLocalizedContent() {
             const earnedMap = {};
             this.badges.forEach((badge) => {
@@ -1217,6 +1962,7 @@
             });
 
             this.tutorial.steps = tm('navigationData.tutorialSteps') || [];
+            this.permissionsMission.steps = tm('navigationData.permissionMission.steps') || [];
             this.commandDescriptions = tm('navigationData.commandDescriptions') || {};
             this.badges = (tm('navigationData.badges') || []).map((badge) => ({
                 ...badge,
@@ -1231,26 +1977,37 @@
             this.robotTooltip.lastMessage = '';
             this.robotTooltip.greetingShown = false;
         },
-        confirmResetTraining() {
-            this.clearRobotTooltipOnUserAction();
-            const confirmed = typeof window === 'undefined'
-                ? true
-                : window.confirm(this.t('terminal.confirmResetTraining'));
-            if (!confirmed) {
+        applyMissionSelection() {
+            const availableMissionIds = this.missionOptions.map((mission) => mission.id);
+            if (!availableMissionIds.includes(this.activeMissionId)) {
+                this.activeMissionId = DEFAULT_MISSION_ID;
                 return;
             }
-            this.resetTrainingState();
+
+            this.clearRobotTooltipOnUserAction();
+            if (this.isPermissionsMission) {
+                this.setupPermissionsMission();
+            } else {
+                this.setupNavigationMission();
+            }
         },
-        resetTrainingState() {
+        resetWorkspaceState({
+            treeData,
+            currentUser,
+            currentGroups,
+            startPath,
+            outputMessage = '',
+            resetBadges = false,
+        }) {
             this.signalTimers.forEach((timer) => clearTimeout(timer));
             this.signalTimers = [];
             this.signals = [];
-            this.folderTreeData = buildInitialTreeData();
+            this.folderTreeData = treeData;
             this.root = null;
             this.currentNode = null;
             this.pwd = '';
             this.command = '';
-            this.output = this.t('terminal.trainingResetDone');
+            this.output = outputMessage;
             this.commandHistory = [];
             this.cursorHistory = 0;
             this.cDirect = { from: null, to: null };
@@ -1263,6 +2020,44 @@
                     other: [],
                 },
             };
+            this.currentUser = currentUser;
+            this.currentGroups = [...currentGroups];
+            this.missionStartPath = startPath;
+            this.showCommandHint = this.showCommandAssist;
+            this.tutorialGuidance.introShown = false;
+            this.tutorialGuidance.helpHintShown = false;
+            this.tutorialGuidance.persistentId = null;
+            this.telemetryQueue = [];
+
+            if (resetBadges) {
+                this.stats = {
+                    visitedPaths: [],
+                    createdDirectory: false,
+                    createdFile: false,
+                    removedDirectory: false,
+                    manUses: 0,
+                    tutorialCompleted: false,
+                    permissionsCompleted: false,
+                };
+                this.badges = this.badges.map((badge) => ({ ...badge, earned: false }));
+                this.persistBadges();
+            }
+
+            this.$store.commit('setCommandHistory', { history: [], timestamp: null });
+            this.$nextTick(() => {
+                this.createTree();
+                this.createOutputAnimate();
+                this.focusCommandInput();
+            });
+        },
+        setupNavigationMission(options = {}) {
+            this.permissionsMission.active = false;
+            this.permissionsMission.completed = false;
+            this.permissionsMission.showSuccess = false;
+            this.permissionsMission.currentStep = 0;
+            this.permissionsMission.feedback = '';
+            this.permissionsMission.feedbackType = '';
+            this.tutorial.steps = tm('navigationData.tutorialSteps') || [];
             this.tutorial.showIntro = true;
             this.tutorial.active = true;
             this.tutorial.completed = false;
@@ -1270,27 +2065,59 @@
             this.tutorial.currentStep = 0;
             this.tutorial.feedback = '';
             this.tutorial.feedbackType = '';
-            this.showCommandHint = this.showCommandAssist;
-            this.tutorialGuidance.introShown = false;
-            this.tutorialGuidance.helpHintShown = false;
-            this.tutorialGuidance.persistentId = null;
-            this.telemetryQueue = [];
-            this.stats = {
-                visitedPaths: [],
-                createdDirectory: false,
-                createdFile: false,
-                removedDirectory: false,
-                manUses: 0,
-                tutorialCompleted: false,
-            };
-            this.badges = this.badges.map((badge) => ({ ...badge, earned: false }));
-            this.$store.commit('setCommandHistory', { history: [], timestamp: null });
-            this.persistBadges();
-            this.$nextTick(() => {
-                this.createTree();
-                this.createOutputAnimate();
-                this.focusCommandInput();
+            this.resetWorkspaceState({
+                treeData: buildInitialTreeData(),
+                currentUser: 'user',
+                currentGroups: ['user'],
+                startPath: NAVIGATION_START_PATH,
+                outputMessage: options.outputMessage || '',
+                resetBadges: !!options.resetBadges,
             });
+        },
+        setupPermissionsMission(options = {}) {
+            this.tutorial.showIntro = false;
+            this.tutorial.active = false;
+            this.tutorial.completed = false;
+            this.tutorial.showSuccess = false;
+            this.tutorial.feedback = '';
+            this.tutorial.feedbackType = '';
+            this.permissionsMission.steps = tm('navigationData.permissionMission.steps') || [];
+            this.permissionsMission.active = true;
+            this.permissionsMission.completed = false;
+            this.permissionsMission.showSuccess = false;
+            this.permissionsMission.currentStep = 0;
+            this.permissionsMission.feedback = '';
+            this.permissionsMission.feedbackType = '';
+            this.selectedPermissionPath = '/home/alice/projet-alpha/rapport.txt';
+            this.resetWorkspaceState({
+                treeData: buildPermissionsTreeData(),
+                currentUser: 'alice',
+                currentGroups: ['alice', 'dev'],
+                startPath: PERMISSIONS_START_PATH,
+                outputMessage: options.outputMessage || this.t('navigation.permissionMissionReady'),
+                resetBadges: !!options.resetBadges,
+            });
+        },
+        confirmResetTraining() {
+            this.clearRobotTooltipOnUserAction();
+            const confirmed = typeof window === 'undefined'
+                ? true
+                : window.confirm(this.t('terminal.confirmResetTraining'));
+            if (!confirmed) {
+                return;
+            }
+            this.resetTrainingState();
+        },
+        resetTrainingState() {
+            const options = {
+                outputMessage: this.t('terminal.trainingResetDone'),
+                resetBadges: true,
+            };
+            if (this.isPermissionsMission) {
+                this.setupPermissionsMission(options);
+            } else {
+                this.setupNavigationMission(options);
+            }
         },
         buildRightsInfos(){
             // 
@@ -1485,6 +2312,15 @@
         selectCommandSuggestion(cmd) {
             this.clearRobotTooltipOnUserAction();
             this.command = `${cmd} `;
+            this.dismissCommandHint();
+            this.$nextTick(() => this.focusCommandInput());
+        },
+        selectPermissionGuideCommand(cmd) {
+            if (!cmd) {
+                return;
+            }
+            this.clearRobotTooltipOnUserAction();
+            this.command = cmd;
             this.dismissCommandHint();
             this.$nextTick(() => this.focusCommandInput());
         },
@@ -1684,7 +2520,7 @@
             if (!this.currentNode) {
                 this.currentNode = root;
                 setTimeout(function(){
-                    this.changeDirectory("home/user", { silent: true })
+                    this.changeDirectory(this.missionStartPath || NAVIGATION_START_PATH, { silent: true })
                     this.cDirect.from = null;
                     this.createOutputAnimate()
                 }.bind(this), 750)
@@ -2679,7 +3515,19 @@
             if (!entry) {
                 return '';
             }
-            return entry.tooltip || this.buildCommandTooltip(entry.command, entry.state, entry.output);
+            const text = entry.tooltip || this.buildCommandTooltip(entry.command, entry.state, entry.output);
+            return text.length <= 180 ? text : '';
+        },
+        showTerminalScrollbar() {
+            this.terminalScrolling = true;
+            clearTimeout(this.terminalScrollTimer);
+            this.terminalScrollTimer = setTimeout(() => {
+                this.terminalScrolling = false;
+            }, 900);
+        },
+        trackTerminalScrollbar(event) {
+            const bounds = event.currentTarget.getBoundingClientRect();
+            this.terminalScrollbarNear = bounds.right - event.clientX <= 24;
         },
         hasChildNamed(node, name) {
             if (!node) return false;
@@ -2726,6 +3574,9 @@
             }
             if (this.stats.tutorialCompleted) {
                 this.awardBadge('mentor');
+            }
+            if (this.stats.permissionsCompleted) {
+                this.awardBadge('gardien');
             }
             this.persistBadges();
         },
@@ -2875,6 +3726,7 @@
                 removedDirectory: !!storedStats.removedDirectory,
                 manUses: storedStats.manUses || 0,
                 tutorialCompleted: !!storedStats.tutorialCompleted,
+                permissionsCompleted: !!storedStats.permissionsCompleted,
             };
         },
         persistBadges() {
@@ -2893,6 +3745,7 @@
                     removedDirectory: this.stats.removedDirectory,
                     manUses: this.stats.manUses,
                     tutorialCompleted: this.stats.tutorialCompleted,
+                    permissionsCompleted: this.stats.permissionsCompleted,
                 },
             });
         },
@@ -2960,6 +3813,15 @@
                 case 'chmod':
                     state = this.handleChmod(param);
                     break
+                case 'whoami':
+                    state = this.whoamiCommand();
+                    break;
+                case 'groups':
+                    state = this.groupsCommand();
+                    break;
+                case 'id':
+                    state = this.idCommand();
+                    break;
                 case 'pwd':
                     this.pathWayDirectory();
                     break;
@@ -3040,6 +3902,7 @@
             }
 
                 this.handleTutorialProgress(cmd, param, state, issuedCommand);
+                this.handlePermissionMissionProgress(cmd, param, state, issuedCommand);
 
             this.pushCommandToHistory(issuedCommand, state, this.output);
             this.command = '';
@@ -5630,24 +6493,59 @@
                 min-width: 320px;
                 height: 65vh;
                 position: relative;
+                display: flex;
+                flex-direction: column;
                 overflow: hidden;
                 box-shadow: 1px 1px 5px #333;
+                .command-input-wrapper {
+                    flex: 0 0 auto;
+                }
+                .tutorial-card,
+                .permission-mission-card {
+                    flex: 0 1 auto;
+                    min-height: 0;
+                    max-height: 50%;
+                    overflow-y: auto;
+                }
                 .v-text-field {
                     margin: auto;
                     width: 97%;
-                    position: absolute;
-                    // top: 50px;
+                    position: relative;
                     z-index: 1;
                 }
-                .v-list {
+                .output-cmd {
                     z-index: 0;
                     display: block;
                     overflow: auto !important;
                     position: relative;
-                    height: calc(100% - 95px);
-                    top: 90px;
-                    padding: 0 6px 30px;
-                    margin-top: -20px;
+                    padding: 8px 6px 16px;
+                    flex: 1 1 0;
+                    min-height: 0;
+                    scrollbar-width: thin;
+                    scrollbar-color: transparent transparent;
+                    &.is-scrolling,
+                    &.is-scrollbar-near {
+                        scrollbar-color: #888 transparent;
+                    }
+                    &::-webkit-scrollbar {
+                        width: 8px;
+                        height: 8px;
+                    }
+                    &::-webkit-scrollbar-thumb {
+                        background: transparent;
+                        border-radius: 8px;
+                    }
+                    &.is-scrolling::-webkit-scrollbar-thumb,
+                    &.is-scrollbar-near::-webkit-scrollbar-thumb {
+                        background: #888;
+                    }
+                    @media (forced-colors: active), (pointer: coarse) {
+                        scrollbar-color: auto;
+                    }
+                    .v-list-item-title {
+                        white-space: pre-wrap;
+                        overflow-wrap: anywhere;
+                    }
                     .v-list-item-title{
                         .in-terminal-i {
                             font-size: 17px !important;
@@ -6005,6 +6903,26 @@
         margin: 12px 0;
     }
 
+    .mission-toolbar {
+        display: grid;
+        grid-template-columns: minmax(260px, 420px) 1fr;
+        gap: 12px;
+        align-items: center;
+        margin: 12px 0;
+        padding: 10px 12px;
+        border: 1px solid rgba(23, 56, 71, 0.14);
+        border-radius: 8px;
+        background: #f7fbfc;
+    }
+
+    .mission-picker__selection,
+    .mission-mode-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
     .learning-mode-control,
     .learning-toolbar__actions {
         display: flex;
@@ -6017,6 +6935,275 @@
         font-size: 0.82rem;
         font-weight: 700;
         color: #173847;
+    }
+
+    .permission-mission-card {
+        margin: 20px;
+        padding-bottom: 0;
+        border: 1px solid rgba(109, 220, 190, 0.32);
+        border-radius: 8px;
+        background: rgba(18, 31, 35, 0.92);
+        color: #e9f8ff;
+        .permission-mission-card__title {
+            display: flex;
+            align-items: center;
+            color: #dffaf4;
+            margin-top: 25px;
+            font-size: 0.95rem;
+        }
+        .tutorial-description {
+            color: #d6e5e9;
+            font-size: 0.86rem;
+            line-height: 1.45;
+            code {
+                font-family: 'JetBrains Mono', 'Fira Code', 'Source Code Pro', monospace;
+                background: rgba(109, 220, 190, 0.17);
+                color: #83f0d0;
+                padding: 2px 7px;
+                border-radius: 4px;
+                font-weight: 700;
+            }
+        }
+    }
+
+    .permission-step-guide {
+        margin-top: 10px;
+        padding: 9px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(131, 240, 208, 0.25);
+        background: rgba(6, 45, 52, 0.72);
+        color: #dffaf4;
+    }
+
+    .permission-step-guide__label {
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #83f0d0;
+        margin-bottom: 6px;
+    }
+
+    .permission-step-guide__command {
+        margin: 0 0 6px;
+        max-width: 100%;
+        code {
+            color: inherit;
+            font-family: 'Roboto Mono', monospace;
+            white-space: normal;
+        }
+    }
+
+    .permission-step-guide__note {
+        font-size: 0.82rem;
+        line-height: 1.4;
+        color: #c4e7e2;
+        code {
+            font-family: 'Roboto Mono', monospace;
+            color: #83f0d0;
+            background: rgba(131, 240, 208, 0.12);
+            padding: 1px 5px;
+            border-radius: 4px;
+        }
+    }
+
+    .permission-mission-actions {
+        margin-top: -8px;
+        color: #dffaf4;
+    }
+
+    .permission-restart-btn {
+        color: #83f0d0 !important;
+        font-weight: 700;
+    }
+
+    .permission-restart-btn :deep(.v-btn__content) {
+        color: #83f0d0 !important;
+    }
+
+    .permission-step-counter {
+        color: #e9f8ff;
+        font-weight: 700;
+        background: rgba(131, 240, 208, 0.12);
+        border: 1px solid rgba(131, 240, 208, 0.24);
+        border-radius: 999px;
+        padding: 4px 10px;
+    }
+
+    .tree-panel--permissions {
+        min-width: 420px;
+        overflow: auto;
+    }
+
+    .permission-inspector {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        height: 100%;
+        padding: 14px;
+        border: 1px solid rgba(23, 56, 71, 0.12);
+        border-radius: 8px;
+        background: #f6fafb;
+        color: #173847;
+        overflow: auto;
+    }
+
+    .permission-inspector__header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            line-height: 1.2;
+        }
+    }
+
+    .permission-inspector__eyebrow,
+    .permission-section-title {
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #42606b;
+    }
+
+    .permission-context-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .permission-context,
+    .permission-selected,
+    .permission-matrix,
+    .permission-checks,
+    .permission-targets {
+        border: 1px solid rgba(23, 56, 71, 0.12);
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 10px;
+    }
+
+    .permission-context {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        span {
+            font-size: 0.78rem;
+            color: #607d8b;
+        }
+        strong {
+            font-family: 'Roboto Mono', monospace;
+            color: #102a35;
+        }
+    }
+
+    .permission-targets :deep(.v-chip) {
+        max-width: 100%;
+        height: auto;
+        white-space: normal;
+        align-items: center;
+    }
+
+    .permission-targets code,
+    .permission-selected code,
+    .permission-row code {
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.78rem;
+        color: #0f3d4a;
+        background: rgba(15, 61, 74, 0.08);
+        padding: 2px 5px;
+        border-radius: 4px;
+    }
+
+    .permission-selected {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .permission-selected__meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        div {
+            display: flex;
+            flex-direction: column;
+        }
+        span {
+            font-size: 0.78rem;
+            color: #607d8b;
+        }
+    }
+
+    .permission-selected__owner,
+    .permission-selected__summary {
+        font-size: 0.86rem;
+        color: #2c4b57;
+    }
+
+    .permission-selected__summary {
+        padding: 8px;
+        border-radius: 6px;
+        background: rgba(20, 184, 166, 0.11);
+        color: #0f4c46;
+        font-weight: 700;
+    }
+
+    .permission-matrix {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .permission-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid rgba(23, 56, 71, 0.08);
+        background: #f9fcfd;
+    }
+
+    .permission-row--active {
+        border-color: rgba(20, 184, 166, 0.45);
+        background: rgba(20, 184, 166, 0.08);
+    }
+
+    .permission-row__identity {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+    }
+
+    .permission-row__bits {
+        display: flex;
+        gap: 4px;
+        flex-wrap: nowrap;
+    }
+
+    .permission-checks {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .permission-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.86rem;
+        color: #6b4d12;
+    }
+
+    .permission-check--passed {
+        color: #0f6f47;
     }
 
     .badge-panel .badge-item {

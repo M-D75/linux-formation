@@ -1,0 +1,17 @@
+.v-chip {
+  margin: 7px 3px;
+}
+.link {
+  fill: none;
+  stroke: #ccc;
+  stroke-width: 2px;
+}
+.node circle {
+  fill: #fff;
+  stroke: steelblue;
+  stroke-width: 3px;
+  transition: all 0.5s ease;
+}
+.node text {
+  font: 12px sans-serif;
+}
